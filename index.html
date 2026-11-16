@@ -794,6 +794,71 @@
       .widget-card[data-widget-id="summary"] .stat-val { font-size:.88rem !important; }
       .widget-card[data-widget-id="summary"] .stat-sub { font-size:.59rem !important; }
     }
+
+
+    /* 최종 아이패드 가로 레이아웃 보정: 카드 잘림과 가로 넘침 방지 */
+    @media (min-width:760px) and (orientation:landscape) {
+      html, body { width:100% !important; max-width:100% !important; min-width:0 !important; overflow:hidden !important; }
+      body { display:flex !important; flex-direction:column !important; }
+      .app-header { flex:0 0 auto !important; width:100% !important; }
+      .header-inner { width:100% !important; max-width:none !important; min-width:0 !important; }
+      .header-tools { min-width:0 !important; flex-wrap:wrap !important; }
+      .dashboard-container {
+        width:100% !important; max-width:none !important; min-width:0 !important;
+        height:calc(100dvh - 58px) !important; max-height:calc(100dvh - 58px) !important;
+        min-height:0 !important; flex:1 1 auto !important; overflow:hidden !important;
+        box-sizing:border-box !important; padding:6px 8px !important; margin:0 !important;
+      }
+      .edit-mode-banner { flex:0 0 auto !important; }
+      .widget-grid {
+        display:grid !important; width:100% !important; max-width:100% !important; min-width:0 !important;
+        height:100% !important; min-height:0 !important; box-sizing:border-box !important;
+        grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+        grid-template-rows:minmax(92px,.32fr) repeat(2,minmax(0,1fr)) !important;
+        grid-auto-flow:row !important; gap:7px !important; align-items:stretch !important;
+        overflow:hidden !important;
+      }
+      .widget-card, .widget-card.span-6, .widget-card.span-12 {
+        grid-column:auto !important; width:auto !important; max-width:100% !important;
+        min-width:0 !important; min-height:0 !important; height:100% !important;
+        box-sizing:border-box !important; display:flex !important; flex-direction:column !important;
+        overflow:hidden !important; padding:7px 8px !important;
+      }
+      .widget-card[data-widget-id="summary"] { grid-column:1 / -1 !important; }
+      .widget-card[style*="display: none"] { display:none !important; }
+      .widget-edit-bar { flex:0 0 auto !important; min-width:0 !important; margin-bottom:3px !important; }
+      .widget-edit-bar > div { display:flex !important; gap:3px !important; }
+      .widget-edit-bar button[onclick^="toggleWidgetSpan"] { display:none !important; }
+      .widget-header { flex:0 0 auto !important; min-width:0 !important; flex-wrap:wrap !important; gap:4px !important; margin:0 0 5px !important; }
+      .widget-title { min-width:0 !important; font-size:clamp(.66rem,1vw,.8rem) !important; line-height:1.2 !important; overflow-wrap:anywhere !important; }
+      .widget-card > :not(.widget-edit-bar):not(.widget-header) { min-width:0 !important; }
+      .widget-card[data-widget-id="summary"] .stats-row { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:5px !important; }
+      .widget-card[data-widget-id="summary"] .stat-box { min-width:0 !important; padding:4px 6px !important; }
+      .widget-card[data-widget-id="summary"] .stat-label { font-size:clamp(.56rem,.78vw,.68rem) !important; line-height:1.15 !important; }
+      .widget-card[data-widget-id="summary"] .stat-val { font-size:clamp(.78rem,1.1vw,.96rem) !important; line-height:1.15 !important; overflow-wrap:anywhere !important; }
+      .widget-card[data-widget-id="summary"] .stat-sub { font-size:clamp(.52rem,.7vw,.62rem) !important; line-height:1.15 !important; }
+      .quick-timer-box { min-width:0 !important; padding:5px !important; }
+      .qt-row { min-width:0 !important; gap:3px !important; flex-wrap:wrap !important; }
+      .qt-select, .qt-input { min-width:0 !important; max-width:100% !important; padding:4px 5px !important; font-size:.65rem !important; }
+      .quick-timer-box .btn { padding:4px 6px !important; font-size:.62rem !important; }
+      .todo-list { min-height:0 !important; max-height:none !important; flex:1 1 auto !important; overflow-y:auto !important; }
+      #timetableContainer { min-height:0 !important; max-height:none !important; flex:1 1 auto !important; overflow-y:auto !important; overflow-x:hidden !important; }
+      .tt-hour-label, .tt-slot { height:clamp(21px,3.2vh,30px) !important; }
+      .tt-grid { grid-template-columns:34px minmax(0,1fr) minmax(0,1fr) !important; }
+      .tt-block { font-size:.58rem !important; line-height:1.1 !important; overflow:hidden !important; }
+      .cal-grid { min-height:0 !important; flex:1 1 auto !important; grid-auto-rows:minmax(0,1fr) !important; }
+      .cal-cell { min-height:0 !important; aspect-ratio:auto !important; padding:2px !important; }
+      .week-chart { min-height:0 !important; flex:1 1 auto !important; }
+      .reflection-area { min-height:0 !important; height:auto !important; flex:1 1 auto !important; resize:none !important; font-size:.68rem !important; line-height:1.25 !important; }
+      .widget-card :is(input,select,textarea,button) { min-width:0; max-width:100%; }
+    }
+    @media (min-width:760px) and (orientation:landscape) and (max-height:700px) {
+      .dashboard-container { height:calc(100dvh - 50px) !important; max-height:calc(100dvh - 50px) !important; }
+      .widget-grid { grid-template-rows:minmax(82px,.3fr) repeat(2,minmax(0,1fr)) !important; gap:5px !important; }
+      .widget-card, .widget-card.span-6, .widget-card.span-12 { padding:5px 6px !important; }
+      .widget-header { margin-bottom:3px !important; }
+    }
+
 </style>
 </head>
 <body>
@@ -886,7 +951,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 📊 오늘의 요약 통계</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('summary')">너비 전환 (1열/전체)</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('summary')">숨김</button>
         </div>
       </div>
@@ -923,7 +987,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | ⏱️ 집중 타이머 & 할 일</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('timerTodo')">너비 전환</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('timerTodo')">숨김</button>
         </div>
       </div>
@@ -969,7 +1032,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 📅 계획 vs 실제 비교 타임테이블</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('timetable')">너비 전환</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('timetable')">숨김</button>
         </div>
       </div>
@@ -1004,7 +1066,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 🟩 공부 농도 히트맵 달력</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('heatmap')">너비 전환</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('heatmap')">숨김</button>
         </div>
       </div>
@@ -1034,7 +1095,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 📈 1주일 누적 학습 그래프</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('weekly')">너비 전환</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('weekly')">숨김</button>
         </div>
       </div>
@@ -1053,7 +1113,6 @@
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 📝 오늘의 회고 & 별점</span>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="toggleWidgetSpan('reflection')">너비 전환</button>
           <button class="btn btn-danger btn-sm" onclick="hideWidget('reflection')">숨김</button>
         </div>
       </div>
@@ -1160,7 +1219,7 @@
     </p>
     <div class="form-group">
       <label class="form-label">내 기기에서 배경 파일 선택</label>
-      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/mp4,video/webm" onchange="handleFocusMediaUpload(event)">
+      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/*,.mp4,.webm,.mov,.m4v" onchange="handleFocusMediaUpload(event)">
     </div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px;">
       <button class="btn btn-danger btn-sm" onclick="clearCustomFocusMedia()">업로드 배경 초기화 (기본 테마 사용)</button>
@@ -1716,7 +1775,7 @@ function applyWidgetLayout() {
   userData.widgets.forEach(w => {
     const card = grid.querySelector(`[data-widget-id="${w.id}"]`);
     if (!card) return;
-    card.style.display = w.visible ? "block" : "none";
+    card.style.display = w.visible ? "flex" : "none";
     card.classList.remove("span-6", "span-12");
     card.classList.add(`span-${w.span || 6}`);
     grid.appendChild(card); // 저장된 순서대로 DOM 재배열
@@ -1978,14 +2037,31 @@ function openFocusBgModal() {
 }
 
 async function handleFocusMediaUpload(event) {
-  const file = event.target.files[0];
+  const file = event.target.files && event.target.files[0];
   if (!file || !currentUser) return;
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const mimeByExt = {
+    mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm",
+    mov: "video/quicktime", jpg: "image/jpeg", jpeg: "image/jpeg",
+    png: "image/png", gif: "image/gif", webp: "image/webp"
+  };
+  const mimeType = file.type || mimeByExt[ext] || "";
+  const isVideo = mimeType.startsWith("video/") || ["mp4", "m4v", "mov", "webm"].includes(ext);
+  const isImage = mimeType.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+  if (!isVideo && !isImage) {
+    showToast("JPG, PNG, GIF, WebP 또는 MP4, WebM, MOV 파일을 선택해 주세요.");
+    event.target.value = "";
+    return;
+  }
   try {
-    await MediaDB.saveMedia(`focus_bg_${currentUser}`, file, file.type);
+    showToast("배경 파일을 저장하고 있습니다...");
+    await MediaDB.saveMedia(`focus_bg_${currentUser}`, file, mimeType || (isVideo ? "video/mp4" : "image/jpeg"));
     await applySavedFocusMedia();
-    showToast("배경 미디어가 IndexedDB에 안전하게 저장되었습니다!");
+    showToast("배경 파일이 저장되었습니다.");
   } catch (err) {
-    showToast("배경 파일 저장 중 오류가 발생했습니다.");
+    console.error("Focus media upload failed:", err);
+    const reason = err && (err.name === "QuotaExceededError" ? "기기 저장 공간이 부족합니다." : err.message);
+    showToast(reason ? `배경 저장 실패: ${reason}` : "배경 파일 저장에 실패했습니다. 파일 크기나 브라우저 저장 권한을 확인해 주세요.");
   }
   event.target.value = "";
 }
@@ -2022,9 +2098,19 @@ async function applySavedFocusMedia() {
 
   if (record.mimeType && record.mimeType.startsWith("video/")) {
     imgEl.style.display = "none";
+    vidEl.pause();
+    vidEl.removeAttribute("src");
     vidEl.src = activeMediaObjectURL;
+    vidEl.muted = true;
+    vidEl.loop = true;
+    vidEl.autoplay = true;
+    vidEl.playsInline = true;
     vidEl.style.display = "block";
-    vidEl.play().catch(() => {});
+    vidEl.load();
+    vidEl.play().catch((err) => {
+      console.warn("Background video autoplay was blocked:", err);
+      showToast("동영상은 저장됐지만 자동 재생이 제한됐습니다. 타이머 화면에서 재생을 눌러 주세요.");
+    });
   } else {
     vidEl.style.display = "none";
     imgEl.src = activeMediaObjectURL;
