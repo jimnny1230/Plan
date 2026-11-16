@@ -680,7 +680,121 @@
       .stat-box { padding:3px 5px; }
     }
 
-  </style>
+  
+
+    /* iPad 가로 화면: 각 위젯의 실제 내용이 카드 안에서 읽히도록 재조정 */
+    @media (min-width:760px) and (orientation:landscape) {
+      .dashboard-container { padding:6px 9px 7px !important; }
+      .widget-grid {
+        grid-template-rows:minmax(92px,.34fr) repeat(2,minmax(0,1fr)) !important;
+        gap:7px !important;
+      }
+      .widget-card, .widget-card.span-6, .widget-card.span-12 {
+        padding:8px 9px !important;
+        overflow:hidden;
+      }
+      .widget-header { gap:6px !important; margin-bottom:6px !important; }
+      .widget-title { font-size:.78rem !important; line-height:1.25 !important; }
+      .widget-title-dot { width:7px; height:7px; flex:0 0 7px; }
+      .widget-header .btn { font-size:.66rem !important; padding:4px 6px !important; }
+      .widget-edit-bar { font-size:.64rem !important; line-height:1.2; }
+      .widget-edit-bar .btn { font-size:.61rem !important; padding:3px 5px !important; }
+
+      /* 요약: 제목과 수치가 겹치지 않도록 여유 확보 */
+      .widget-card[data-widget-id="summary"] .widget-header { margin-bottom:6px !important; }
+      .widget-card[data-widget-id="summary"] .widget-title { font-size:.8rem !important; }
+      .widget-card[data-widget-id="summary"] .stats-row { gap:7px !important; }
+      .widget-card[data-widget-id="summary"] .stat-box { padding:6px 8px !important; }
+      .widget-card[data-widget-id="summary"] .stat-label { font-size:.68rem !important; line-height:1.25 !important; }
+      .widget-card[data-widget-id="summary"] .stat-val { font-size:.96rem !important; line-height:1.25 !important; overflow-wrap:anywhere; }
+      .widget-card[data-widget-id="summary"] .stat-sub { font-size:.62rem !important; line-height:1.25 !important; }
+
+      /* 타이머와 할 일 */
+      .quick-timer-box { padding:7px !important; gap:6px !important; }
+      .qt-row { gap:5px !important; margin-bottom:0 !important; }
+      .qt-select, .qt-input { min-width:0 !important; padding:6px 7px !important; font-size:.72rem !important; }
+      .quick-timer-box .btn { padding:6px 8px !important; font-size:.7rem !important; }
+      .widget-card[data-widget-id="timerTodo"] > div[style*="margin-top"] {
+        margin-top:7px !important; min-height:0; display:flex; flex-direction:column; flex:1 1 auto;
+      }
+      .widget-card[data-widget-id="timerTodo"] > div[style*="margin-top"] > div:first-child {
+        font-size:.72rem !important; margin-bottom:5px !important;
+      }
+      .todo-input-row { gap:5px !important; margin-bottom:5px !important; }
+      .todo-list { min-height:0; max-height:none !important; flex:1 1 auto; overflow-y:auto; gap:4px !important; }
+      .todo-item { padding:5px 7px !important; font-size:.72rem !important; line-height:1.25; }
+
+      /* 시간표: 6시간 구간을 30px 단위로 표시해 한 카드 안에 배치 */
+      .widget-card[data-widget-id="timetable"] .widget-header { flex-wrap:wrap !important; }
+      .widget-card[data-widget-id="timetable"] .widget-title { font-size:.76rem !important; }
+      .part-tabs { gap:3px !important; }
+      .part-tab { padding:4px 7px !important; font-size:.68rem !important; }
+      .widget-card[data-widget-id="timetable"] > div[style*="justify-content:space-between"] {
+        margin:3px 0 5px !important; font-size:.66rem !important; gap:4px;
+      }
+      .widget-card[data-widget-id="timetable"] > div[style*="justify-content:space-between"] .btn {
+        font-size:.65rem !important; padding:4px 6px !important;
+      }
+      .widget-card[data-widget-id="timetable"] .tt-compare-header {
+        grid-template-columns:42px 1fr 1fr !important; gap:3px !important;
+        padding:4px 2px !important; margin-bottom:4px !important; font-size:.66rem !important;
+      }
+      #timetableContainer { min-height:0; flex:1 1 auto; overflow-y:auto !important; overflow-x:hidden !important; }
+      .tt-part-section { margin-bottom:0 !important; }
+      .tt-part-label { padding:3px 6px !important; margin-bottom:3px !important; font-size:.67rem !important; }
+      .tt-grid { grid-template-columns:42px 1fr 1fr !important; gap:3px !important; }
+      .tt-hour-label, .tt-slot { height:30px !important; }
+      .tt-hour-label { padding-top:3px !important; font-size:.64rem !important; }
+      .tt-block { left:2px !important; right:2px !important; padding:2px 3px !important; font-size:.65rem !important; line-height:1.15; border-radius:4px !important; }
+      .tt-block div + div { font-size:.57rem !important; }
+
+      /* 달력 */
+      .widget-card[data-widget-id="heatmap"] .widget-header { flex-wrap:nowrap !important; }
+      .widget-card[data-widget-id="heatmap"] .widget-title { font-size:.75rem !important; }
+      .widget-card[data-widget-id="heatmap"] .widget-header span { font-size:.7rem !important; }
+      .widget-card[data-widget-id="heatmap"] > div[style*="justify-content:flex-end"] {
+        margin:2px 0 5px !important; font-size:.64rem !important; gap:3px !important;
+      }
+      .cal-grid { min-height:0; flex:1 1 auto; grid-auto-rows:minmax(0,1fr); gap:3px !important; }
+      .cal-day-head { font-size:.68rem !important; padding-bottom:2px !important; }
+      .cal-cell { aspect-ratio:auto !important; min-height:0; padding:2px !important; font-size:.72rem !important; border-radius:5px !important; }
+      .cal-hrs { font-size:.58rem !important; }
+
+      /* 주간 그래프 */
+      .widget-card[data-widget-id="weekly"] .widget-header { flex-wrap:nowrap !important; }
+      .widget-card[data-widget-id="weekly"] #weeklyTotalBadge { font-size:.68rem !important; padding:3px 6px !important; white-space:nowrap; }
+      .widget-card[data-widget-id="weekly"] > div[style*="font-size:0.75rem"] {
+        font-size:.66rem !important; line-height:1.25; margin:2px 0 4px !important;
+      }
+      .week-chart { min-height:0; height:auto !important; flex:1 1 auto; padding:12px 2px 2px !important; gap:5px !important; }
+      .week-bar-col { min-width:0; gap:3px !important; }
+      .week-bar-stack { max-width:26px !important; }
+      .week-day-lbl { font-size:.68rem !important; }
+      .week-val-lbl { font-size:.61rem !important; }
+
+      /* 회고 */
+      .widget-card[data-widget-id="reflection"] .widget-header { flex-wrap:nowrap !important; }
+      .widget-card[data-widget-id="reflection"] .star-row { gap:3px !important; font-size:1rem !important; }
+      .widget-card[data-widget-id="reflection"] #subjectSummaryPills { gap:4px !important; margin-bottom:5px !important; }
+      .widget-card[data-widget-id="reflection"] #subjectSummaryPills span { font-size:.64rem !important; padding:3px 6px !important; }
+      .reflection-area {
+        min-height:0 !important; height:auto !important; flex:1 1 auto;
+        margin-top:4px !important; padding:7px !important; font-size:.76rem !important; line-height:1.35 !important;
+      }
+      .widget-card :is(input,select,textarea,button) { max-width:100%; }
+    }
+
+    /* 화면 높이가 낮은 아이패드에서도 글자가 지나치게 작아지지 않도록 */
+    @media (min-width:760px) and (orientation:landscape) and (max-height:700px) {
+      .widget-grid { grid-template-rows:minmax(88px,.34fr) repeat(2,minmax(0,1fr)) !important; gap:5px !important; }
+      .widget-card, .widget-card.span-6, .widget-card.span-12 { padding:6px 7px !important; }
+      .widget-header { margin-bottom:4px !important; }
+      .widget-card[data-widget-id="summary"] .stat-box { padding:4px 6px !important; }
+      .widget-card[data-widget-id="summary"] .stat-label { font-size:.64rem !important; }
+      .widget-card[data-widget-id="summary"] .stat-val { font-size:.88rem !important; }
+      .widget-card[data-widget-id="summary"] .stat-sub { font-size:.59rem !important; }
+    }
+</style>
 </head>
 <body>
 
@@ -862,8 +976,8 @@
       <div class="widget-header">
         <div class="widget-title"><span class="widget-title-dot"></span>3파트 계획 vs 실제 비교 타임테이블</div>
         <div class="part-tabs">
-          <button class="part-tab active" data-part="all" onclick="setTimetablePart('all')">전체</button>
-          <button class="part-tab" data-part="morning" onclick="setTimetablePart('morning')">🌅 아침</button>
+          <button class="part-tab" data-part="all" onclick="setTimetablePart('all')">전체</button>
+          <button class="part-tab active" data-part="morning" onclick="setTimetablePart('morning')">🌅 아침</button>
           <button class="part-tab" data-part="afternoon" onclick="setTimetablePart('afternoon')">☀️ 점심</button>
           <button class="part-tab" data-part="evening" onclick="setTimetablePart('evening')">🌙 저녁</button>
         </div>
@@ -1303,7 +1417,7 @@ let userData = null;
 let selectedDate = new Date().toISOString().slice(0, 10);
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
-let currentPartFilter = "all";
+let currentPartFilter = "morning";
 let isEditMode = false;
 let selectedStickerId = null;
 let activeMediaObjectURL = null;
@@ -2155,7 +2269,7 @@ function renderTimetable() {
   container.innerHTML = visibleParts.map(p => {
     const pStartMin = p.startH * 60;
     const pEndMin = p.endH * 60;
-    const totalHeight = (p.endH - p.startH) * 48;
+    const totalHeight = (p.endH - p.startH) * 30;
 
     let hoursHtml = "";
     let planSlots = "";
@@ -2175,8 +2289,8 @@ function renderTimetable() {
         const visStart = Math.max(sMin, pStartMin);
         const visEnd = Math.min(eMin, pEndMin);
         if (visEnd <= visStart) return "";
-        const top = (visStart - pStartMin) * 0.8;
-        const height = Math.max(20, (visEnd - visStart) * 0.8);
+        const top = (visStart - pStartMin) * 0.5;
+        const height = Math.max(16, (visEnd - visStart) * 0.5);
         const sub = userData.subjects.find(sub => sub.id === s.subjectId) || userData.subjects[0];
         const isSchool = s.category === "school";
         return `
