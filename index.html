@@ -969,14 +969,16 @@
       </svg>
     </div>
     <div class="login-title">모멘텀 커스텀 스터디 플래너</div>
-    <div class="login-desc">인터넷 없이 브라우저에 안전하게 저장됩니다.<br>닉네임을 입력하면 나만의 커스텀 플래너로 입장합니다.</div>
-    <div class="login-input-wrap">
-      <input type="text" id="loginNicknameInput" class="login-input" placeholder="닉네임 입력 (예: 지민, 수험생A)" maxlength="20" onkeydown="if(event.key==='Enter') handleLogin()">
-      <button class="btn btn-primary" onclick="handleLogin()">입장하기</button>
-    </div>
-    <div id="savedAccountsArea" style="display:none;">
-      <div style="font-size:0.78rem;color:var(--text-muted);font-weight:700;">최근 접속한 닉네임</div>
-      <div class="saved-accounts" id="savedAccountsList"></div>
+    <div class="login-desc">계정별로 플래너를 분리해 저장합니다.<br>비밀번호는 이 기기의 브라우저에만 저장됩니다.</div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <input type="text" id="loginNicknameInput" class="login-input" placeholder="아이디" maxlength="20" autocomplete="username">
+      <input type="password" id="loginPasswordInput" class="login-input" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+      <input type="password" id="loginPasswordConfirm" class="login-input" placeholder="비밀번호 확인 (회원가입 시 입력)" autocomplete="new-password" style="display:none;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="handleLogin()">로그인</button>
+        <button class="btn btn-outline" style="flex:1;" onclick="registerLocalAccount()">회원가입</button>
+      </div>
+      <div id="loginMessage" role="status" style="font-size:.8rem;color:var(--text-sub);min-height:1.2em;"></div>
     </div>
   </div>
 </div>
@@ -995,7 +997,7 @@
           <span id="headerUserTitle">학습자</span>님의 플래너
           <span id="ddayBadge" onclick="openDdayModal()" style="font-size:0.72rem;background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:999px;cursor:pointer;">D-Day 설정</span>
         </div>
-        <div style="font-size:0.73rem;color:var(--text-muted);">완전 오프라인 로컬 저장소 작동 중</div>
+        <div style="font-size:0.73rem;color:var(--text-muted);">로컬 저장 · 백업 파일로 공동 기록 교환</div>
       </div>
     </div>
 
@@ -1594,6 +1596,8 @@ let timerInterval = null;
 let timerSeconds = 0;
 let timerTargetSeconds = 0;
 let timerPaused = false;
+let timerStartedAt = 0;
+let timerElapsedBeforePause = 0;
 let timerContext = { category: "study", subjectId: "math", title: "" };
 
 const DEFAULT_WIDGETS = [
@@ -1619,16 +1623,19 @@ const BUILTIN_STICKERS = [
 /* ============================================================================
    3. 초기화 및 닉네임 로그인 / 로컬 데이터 관리
    ============================================================================ */
+window.addEventListener("visibilitychange", () => {
+  if (!document.hidden && document.getElementById("focusOverlay")?.classList.contains("active") && !timerPaused) {
+    timerSeconds = timerElapsedBeforePause + Math.floor((Date.now() - timerStartedAt) / 1000);
+    document.getElementById("focusEndInput").value = getNowTimeStr(); updateFocusDigits();
+  }
+});
+
 window.addEventListener("DOMContentLoaded", () => {
-  renderSavedAccounts();
   renderBuiltinStickerGallery();
   initDragAndDropWidgets();
-
-  // 이전 세션 자동 복구
-  const lastUser = localStorage.getItem("momentum_last_user");
-  if (lastUser) {
-    document.getElementById("loginNicknameInput").value = lastUser;
-  }
+  const savedArea = document.getElementById("savedAccountsArea");
+  if (savedArea) savedArea.style.display = "none";
+  ensureJmAccount();
 });
 
 function showToast(msg) {
@@ -1652,27 +1659,56 @@ function renderSavedAccounts() {
   listEl.innerHTML = users.map(u => `<span class="account-chip" onclick="loginAs('${escapeHtml(u)}')">👤 ${escapeHtml(u)}</span>`).join("");
 }
 
-function handleLogin() {
-  const nick = document.getElementById("loginNicknameInput").value.trim();
-  if (!nick) {
-    showToast("닉네임을 입력해주세요!");
-    return;
+const ACCOUNT_STORE_KEY = "momentum_local_accounts_v1";
+function readLocalAccounts() {
+  try { return JSON.parse(localStorage.getItem(ACCOUNT_STORE_KEY) || "{}"); }
+  catch { return {}; }
+}
+async function hashLocalPassword(password) {
+  const bytes = new TextEncoder().encode("momentum-local-v1:" + password);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2,"0")).join("");
+}
+async function ensureJmAccount() {
+  const accounts = readLocalAccounts();
+  if (!accounts["Jm"]) {
+    accounts["Jm"] = { hash: await hashLocalPassword("0515"), createdAt: Date.now() };
+    localStorage.setItem(ACCOUNT_STORE_KEY, JSON.stringify(accounts));
   }
+}
+function loginMessage(message, isError=true) {
+  const el = document.getElementById("loginMessage");
+  if (el) { el.textContent = message; el.style.color = isError ? "#dc2626" : "#059669"; }
+}
+async function handleLogin() {
+  const nick = document.getElementById("loginNicknameInput").value.trim();
+  const password = document.getElementById("loginPasswordInput").value;
+  if (!nick || !password) return loginMessage("아이디와 비밀번호를 입력해 주세요.");
+  const accounts = readLocalAccounts();
+  if (!accounts[nick]) return loginMessage("등록되지 않은 계정입니다. 회원가입을 먼저 해 주세요.");
+  if (accounts[nick].hash !== await hashLocalPassword(password)) return loginMessage("아이디 또는 비밀번호가 일치하지 않습니다.");
   loginAs(nick);
 }
-
+async function registerLocalAccount() {
+  const nick = document.getElementById("loginNicknameInput").value.trim();
+  const password = document.getElementById("loginPasswordInput").value;
+  const confirm = document.getElementById("loginPasswordConfirm");
+  confirm.style.display = "block";
+  if (!nick || !password || !confirm.value) return loginMessage("아이디, 비밀번호, 비밀번호 확인을 모두 입력해 주세요.");
+  if (password !== confirm.value) return loginMessage("비밀번호 두 칸이 일치하지 않습니다.");
+  if (nick.length < 2) return loginMessage("아이디는 2글자 이상 입력해 주세요.");
+  if (password.length < 4) return loginMessage("비밀번호는 4자 이상 입력해 주세요.");
+  const accounts = readLocalAccounts();
+  if (accounts[nick]) return loginMessage("이미 사용 중인 아이디입니다. 다른 아이디를 사용해 주세요.");
+  accounts[nick] = { hash: await hashLocalPassword(password), createdAt: Date.now() };
+  localStorage.setItem(ACCOUNT_STORE_KEY, JSON.stringify(accounts));
+  loginAs(nick);
+}
 function loginAs(nick) {
   currentUser = nick;
-  localStorage.setItem("momentum_last_user", nick);
-
-  // 사용자 목록 인덱스 업데이트
+  localStorage.removeItem("momentum_last_user");
   const users = JSON.parse(localStorage.getItem("momentum_users_index") || "[]");
-  if (!users.includes(nick)) {
-    users.push(nick);
-    localStorage.setItem("momentum_users_index", JSON.stringify(users));
-  }
-
-  // 사용자 데이터 로드 또는 초기화
+  if (!users.includes(nick)) { users.push(nick); localStorage.setItem("momentum_users_index", JSON.stringify(users)); }
   const raw = localStorage.getItem(`momentum_data_${nick}`);
   if (raw) {
     userData = JSON.parse(raw);
@@ -1682,29 +1718,27 @@ function loginAs(nick) {
     if (!userData.conceptColor) userData.conceptColor = "#4f46e5";
     if (!userData.focusMediaSettings) userData.focusMediaSettings = { dim: 45, blur: 0, theme: "aurora", quote: "지금의 몰입이 내일의 나를 만든다." };
     if (!userData.fontFamily) userData.fontFamily = "system";
-  } else {
-    userData = createDefaultUserData(nick);
-    saveUserData();
-  }
-
+  } else { userData = createDefaultUserData(nick); saveUserData(); }
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("headerUserTitle").textContent = nick;
   document.getElementById("conceptColorPicker").value = userData.conceptColor;
   const fontSelect = document.getElementById("fontFamilySelect");
   if (fontSelect) fontSelect.value = userData.fontFamily || "system";
-
   applyConceptColor(userData.conceptColor, false);
   applyPlannerFont(userData.fontFamily || "system", false);
-  applyWidgetLayout();
-  renderPlacedStickers();
-  refreshAllViews();
+  applyWidgetLayout(); renderPlacedStickers(); refreshAllViews();
+  ensureCollabToolbar();
   showToast(`환영합니다, ${nick}님!`);
 }
 
 function logoutUser() {
-  currentUser = "";
-  renderSavedAccounts();
+  currentUser = ""; userData = null;
   document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("loginNicknameInput").value = "";
+  document.getElementById("loginPasswordInput").value = "";
+  document.getElementById("loginPasswordConfirm").value = "";
+  document.getElementById("loginPasswordConfirm").style.display = "none";
+  loginMessage("로그아웃되었습니다.", false);
 }
 
 function createDefaultUserData(nick) {
@@ -2452,6 +2486,8 @@ async function launchFocusTimer() {
 
   timerSeconds = 0;
   timerPaused = false;
+  timerStartedAt = Date.now();
+  timerElapsedBeforePause = 0;
   timerTargetSeconds = mode === "pomo25" ? 1500 : (mode === "pomo50" ? 3000 : 0);
 
   const nowStr = getNowTimeStr();
@@ -2470,11 +2506,11 @@ async function launchFocusTimer() {
   clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     if (!timerPaused) {
-      timerSeconds++;
+      timerSeconds = timerElapsedBeforePause + Math.floor((Date.now() - timerStartedAt) / 1000);
       document.getElementById("focusEndInput").value = getNowTimeStr();
       updateFocusDigits();
     }
-  }, 1000);
+  }, 500);
 }
 
 function updateFocusDigits() {
@@ -2494,8 +2530,16 @@ function recalcFocusTimes() {
 }
 
 function toggleFocusPause() {
-  timerPaused = !timerPaused;
+  if (!timerPaused) {
+    timerSeconds = timerElapsedBeforePause + Math.floor((Date.now() - timerStartedAt) / 1000);
+    timerElapsedBeforePause = timerSeconds;
+    timerPaused = true;
+  } else {
+    timerStartedAt = Date.now();
+    timerPaused = false;
+  }
   document.getElementById("btnFocusPause").textContent = timerPaused ? "▶ 계속하기" : "⏸ 일시정지";
+  updateFocusDigits();
 }
 
 function editFocusQuoteInline() {
@@ -2516,6 +2560,7 @@ function saveQuoteInline() {
 }
 
 function finishFocusTimer() {
+  if (!timerPaused) timerSeconds = timerElapsedBeforePause + Math.floor((Date.now() - timerStartedAt) / 1000);
   clearInterval(timerInterval);
   const startStr = document.getElementById("focusStartInput").value;
   let endStr = document.getElementById("focusEndInput").value;
@@ -2993,6 +3038,67 @@ function renderDdayBadge() {
   const diff = Math.ceil((new Date(userData.dday.date) - new Date(new Date().toISOString().slice(0, 10))) / 86400000);
   const label = diff === 0 ? "D-Day" : (diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`);
   badge.textContent = `${userData.dday.title} (${label})`;
+}
+
+
+/* ==========================================================================
+   개인/공동 보기: 서버 없이 같은 기기에서 두 플래너를 나란히 확인하고,
+   JSON 백업 교환으로 다른 기기의 데이터를 가져오는 로컬 협업 모드
+   ========================================================================== */
+function ensureCollabToolbar() {
+  if (document.getElementById("collabToolbar")) return;
+  const header = document.querySelector(".header-inner");
+  if (!header) return;
+  const bar = document.createElement("div");
+  bar.id = "collabToolbar";
+  bar.style.cssText = "display:flex;gap:6px;align-items:center;flex-wrap:wrap;";
+  bar.innerHTML = '<button class="btn btn-outline btn-sm" onclick="showPersonalView()">개인 화면</button><button class="btn btn-primary btn-sm" onclick="showSharedView()">2인 공동 화면</button><button class="btn btn-outline btn-sm" onclick="exportBackupJson()">내 기록 내보내기</button><label class="btn btn-outline btn-sm" style="cursor:pointer;">상대 기록 가져오기<input type="file" accept=".json,application/json" style="display:none" onchange="loadPartnerBackup(event)"></label>';
+  header.appendChild(bar);
+}
+function showPersonalView() {
+  document.getElementById("sharedPlannerView")?.remove();
+  const main = document.querySelector("main") || document.querySelector(".dashboard-grid")?.parentElement;
+  if (main) main.style.display = "";
+  document.querySelectorAll(".dashboard-grid").forEach(el => el.style.display = "");
+}
+function showSharedView() {
+  if (!currentUser || !userData) return;
+  const existing = document.getElementById("sharedPlannerView");
+  if (existing) existing.remove();
+  const main = document.querySelector("main") || document.querySelector(".dashboard-grid")?.parentElement;
+  const grid = document.querySelector(".dashboard-grid");
+  if (!main || !grid) { showToast("공동 화면 영역을 찾지 못했습니다."); return; }
+  grid.style.display = "none";
+  let partner = null;
+  try { partner = JSON.parse(localStorage.getItem("momentum_partner_snapshot_" + currentUser) || "null"); } catch {}
+  const panel = document.createElement("section"); panel.id = "sharedPlannerView";
+  panel.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:12px;max-width:100%;overflow:auto;max-height:calc(100vh - 150px);";
+  const myDays = userData.days || {}; const day = myDays[selectedDate] || {schedules:[],todos:[]};
+  const own = `<article class="widget-card" style="min-width:0;padding:14px;"><h3>${escapeHtml(currentUser)}의 플래너</h3><p>오늘의 계획과 실행 기록</p>${renderSharedDay(day)}</article>`;
+  const other = partner ? `<article class="widget-card" style="min-width:0;padding:14px;"><h3>${escapeHtml(partner.nickname || '공동작업자')}의 플래너</h3><p>가져온 백업 기준 · 읽기 전용</p>${renderSharedDay((partner.days||{})[selectedDate] || {schedules:[],todos:[]})}</article>` : `<article class="widget-card" style="min-width:0;padding:14px;"><h3>공동작업자 영역</h3><p>상대방이 자신의 플래너에서 JSON 백업을 내보낸 뒤 이 기기에서 가져오면 표시돼.</p><p style="margin-top:12px;color:var(--text-sub);">서버를 사용하지 않으므로 신청·수락 알림과 자동 동기화는 지원되지 않아.</p></article>`;
+  panel.innerHTML = own + other;
+  grid.parentElement.insertBefore(panel, grid);
+}
+function renderSharedDay(day) {
+  const schedules = (day.schedules || []).map(x => `<div style="padding:7px 0;border-bottom:1px solid var(--border);"><b>${escapeHtml(x.start||'')}–${escapeHtml(x.end||'')}</b> ${escapeHtml(x.title||'')}</div>`).join('') || '<p>등록된 일정 없음</p>';
+  const todos = (day.todos || []).map(x => `<div style="padding:4px 0;">${x.done?'☑':'□'} ${escapeHtml(x.text||'')}</div>`).join('') || '<p>할 일 없음</p>';
+  return `<div style="margin-top:10px;"><b>시간표</b>${schedules}<b style="display:block;margin-top:12px;">할 일</b>${todos}</div>`;
+}
+function loadPartnerBackup(event) {
+  const file = event.target.files && event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || !data.days || !data.nickname) throw new Error('invalid');
+      if (data.nickname === currentUser) { showToast('본인 백업은 공동작업자로 가져올 수 없습니다.'); return; }
+      localStorage.setItem('momentum_partner_snapshot_' + currentUser, JSON.stringify(data));
+      showToast(`${data.nickname}의 플래너를 공동 화면에 불러왔습니다.`);
+      showSharedView();
+    } catch { showToast('올바른 플래너 JSON 백업 파일이 아닙니다.'); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function exportBackupJson() {
