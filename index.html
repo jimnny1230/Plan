@@ -1311,7 +1311,7 @@
     </p>
     <div class="form-group">
       <label class="form-label" for="focusMediaFileInput">내 기기에서 배경 파일 선택</label>
-      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v">
+      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/*,.mp4,.m4v,.mov,.webm,.heic,.heif">
     </div>
     <div id="focusMediaSelection" style="display:none;scroll-margin:18px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-subtle);">
       <div id="focusMediaSelectionName" style="font-size:0.86rem;font-weight:700;overflow-wrap:anywhere;"></div>
@@ -2198,7 +2198,10 @@ function openFocusBgModal() {
   openModal("focusBgModal");
   const input = document.getElementById("focusMediaFileInput");
   if (input && !input.dataset.bound) {
+    // iPadOS 사진 선택기는 복귀 시 change 이벤트가 늦게 전달되는 경우가 있어
+    // change/input과 창 포커스 복귀를 함께 감시한다.
     input.addEventListener("change", handleFocusMediaUpload);
+    input.addEventListener("input", handleFocusMediaUpload);
     input.dataset.bound = "1";
   }
 }
@@ -2279,6 +2282,26 @@ function handleFocusMediaUpload(event) {
     if (modalBox && applyRow) modalBox.scrollTo({ top: Math.max(0, applyRow.offsetTop - 24), behavior: "smooth" });
   });
 }
+
+
+// iPad 사진 보관함에서 선택을 확정하고 Safari로 돌아왔을 때 파일 입력값 복구
+(function bindIOSPhotoPickerRecovery() {
+  let pickerWasOpened = false;
+  const getInput = () => document.getElementById("focusMediaFileInput");
+  const input = getInput();
+  if (!input) return;
+  input.addEventListener("click", () => { pickerWasOpened = true; }, { passive: true });
+  const recoverSelection = () => {
+    if (!pickerWasOpened) return;
+    pickerWasOpened = false;
+    const el = getInput();
+    if (el && el.files && el.files.length) handleFocusMediaUpload({ target: el });
+  };
+  window.addEventListener("focus", () => setTimeout(recoverSelection, 350));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) setTimeout(recoverSelection, 350);
+  });
+})();
 
 async function saveSelectedFocusMedia() {
   const file = pendingFocusMediaFile;
