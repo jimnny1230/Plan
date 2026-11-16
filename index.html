@@ -451,7 +451,7 @@
     .modal-box {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 20px; padding: 24px; width: 100%; max-width: 480px;
-      max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-lg);
+      max-height: 88vh; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; box-shadow: var(--shadow-lg);
     }
     .modal-head {
       display: flex; justify-content: space-between; align-items: center;
@@ -1111,9 +1111,9 @@
         <div class="widget-title"><span class="widget-title-dot"></span>3파트 계획 vs 실제 비교 타임테이블</div>
         <div class="part-tabs">
           <button class="part-tab" data-part="all" onclick="setTimetablePart('all')">전체</button>
-          <button class="part-tab active" data-part="morning" onclick="setTimetablePart('morning')">🌅 아침</button>
-          <button class="part-tab" data-part="afternoon" onclick="setTimetablePart('afternoon')">☀️ 점심</button>
-          <button class="part-tab" data-part="evening" onclick="setTimetablePart('evening')">🌙 저녁</button>
+          <button class="part-tab active" data-part="morning" onclick="setTimetablePart('morning')">🌅 1파트</button>
+          <button class="part-tab" data-part="afternoon" onclick="setTimetablePart('afternoon')">☀️ 2파트</button>
+          <button class="part-tab" data-part="evening" onclick="setTimetablePart('evening')">🌙 3파트</button>
         </div>
       </div>
 
@@ -1287,12 +1287,23 @@
       <button class="btn btn-ghost btn-sm" onclick="closeModal('focusBgModal')">✕</button>
     </div>
     <p style="font-size:0.84rem;color:var(--text-sub);margin-bottom:14px;">
-      내 기기의 <strong>사진(JPG, PNG, GIF, WebP)</strong> 또는 <strong>동영상(MP4, WebM)</strong>을 업로드하면 오프라인에서도 브라우저(IndexedDB)에 영구 저장되어 타이머 배경으로 재생됩니다.
+      사진 또는 동영상을 선택한 뒤 아래에 나타나는 <strong>이 파일을 배경으로 적용</strong> 버튼을 누르세요. 저장이 끝나면 타이머 배경으로 적용됩니다. 파일은 이 브라우저의 저장소에 보관됩니다.
     </p>
     <div class="form-group">
-      <label class="form-label">내 기기에서 배경 파일 선택</label>
-      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/*,.mp4,.webm,.mov,.m4v" onchange="handleFocusMediaUpload(event)">
+      <label class="form-label" for="focusMediaFileInput">내 기기에서 배경 파일 선택</label>
+      <input type="file" id="focusMediaFileInput" class="form-control" accept="image/*,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v">
     </div>
+    <div id="focusMediaSelection" style="display:none;scroll-margin:18px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-subtle);">
+      <div id="focusMediaSelectionName" style="font-size:0.86rem;font-weight:700;overflow-wrap:anywhere;"></div>
+      <div id="focusMediaSelectionInfo" style="font-size:0.78rem;color:var(--text-sub);margin-top:4px;"></div>
+      <video id="focusMediaPreviewVideo" controls playsinline muted style="display:none;width:100%;max-height:180px;object-fit:contain;margin-top:10px;border-radius:8px;background:#111;"></video>
+      <img id="focusMediaPreviewImage" alt="선택한 배경 미리보기" style="display:none;width:100%;max-height:180px;object-fit:contain;margin-top:10px;border-radius:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+        <button type="button" class="btn btn-primary" id="applyFocusMediaButton" style="min-height:44px;flex:1 1 180px;" onclick="saveSelectedFocusMedia()">✓ 이 파일을 배경으로 적용</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="resetFocusMediaSelection()">다시 선택</button>
+      </div>
+    </div>
+    <div id="focusMediaUploadStatus" role="status" aria-live="polite" style="font-size:0.8rem;color:var(--text-sub);margin-top:8px;min-height:1.2em;"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px;">
       <button class="btn btn-danger btn-sm" onclick="clearCustomFocusMedia()">업로드 배경 초기화 (기본 테마 사용)</button>
       <button class="btn btn-primary btn-sm" onclick="closeModal('focusBgModal')">확인</button>
@@ -1516,8 +1527,9 @@ const MediaDB = {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.storeName, "readwrite");
       tx.objectStore(this.storeName).put({ blob, mimeType }, key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { const err = tx.error; db.close(); reject(err); };
+      tx.onabort = () => { const err = tx.error || new Error("저장 작업이 중단되었습니다."); db.close(); reject(err); };
     });
   },
   async getMedia(key) {
@@ -2164,36 +2176,123 @@ function toggleStickerVisibility() {
    ============================================================================ */
 function openFocusBgModal() {
   openModal("focusBgModal");
+  const input = document.getElementById("focusMediaFileInput");
+  if (input && !input.dataset.bound) {
+    input.addEventListener("change", handleFocusMediaUpload);
+    input.addEventListener("input", handleFocusMediaUpload);
+    input.dataset.bound = "1";
+  }
 }
 
-async function handleFocusMediaUpload(event) {
-  const file = event.target.files && event.target.files[0];
-  if (!file || !currentUser) return;
+let pendingFocusMediaFile = null;
+let pendingFocusMediaPreviewURL = null;
+
+function resetFocusMediaSelection() {
+  pendingFocusMediaFile = null;
+  const input = document.getElementById("focusMediaFileInput");
+  if (input) input.value = "";
+  if (pendingFocusMediaPreviewURL) {
+    URL.revokeObjectURL(pendingFocusMediaPreviewURL);
+    pendingFocusMediaPreviewURL = null;
+  }
+  const panel = document.getElementById("focusMediaSelection");
+  const video = document.getElementById("focusMediaPreviewVideo");
+  const image = document.getElementById("focusMediaPreviewImage");
+  if (panel) panel.style.display = "none";
+  if (video) { video.pause(); video.removeAttribute("src"); video.load(); video.style.display = "none"; }
+  if (image) { image.removeAttribute("src"); image.style.display = "none"; }
+  const status = document.getElementById("focusMediaUploadStatus");
+  if (status) status.textContent = "";
+}
+
+function handleFocusMediaUpload(event) {
+  const input = event && event.target ? event.target : document.getElementById("focusMediaFileInput");
+  const file = input && input.files && input.files[0];
+  if (!file) return;
   const ext = (file.name.split(".").pop() || "").toLowerCase();
   const mimeByExt = {
-    mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm",
-    mov: "video/quicktime", jpg: "image/jpeg", jpeg: "image/jpeg",
-    png: "image/png", gif: "image/gif", webp: "image/webp"
+    mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime",
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp"
   };
-  const mimeType = file.type || mimeByExt[ext] || "";
+  const suppliedType = (file.type || "").toLowerCase();
+  const mimeType = suppliedType || mimeByExt[ext] || "";
   const isVideo = mimeType.startsWith("video/") || ["mp4", "m4v", "mov", "webm"].includes(ext);
   const isImage = mimeType.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
   if (!isVideo && !isImage) {
     showToast("JPG, PNG, GIF, WebP 또는 MP4, WebM, MOV 파일을 선택해 주세요.");
-    event.target.value = "";
+    if (input) input.value = "";
     return;
   }
+  if (pendingFocusMediaPreviewURL) URL.revokeObjectURL(pendingFocusMediaPreviewURL);
+  pendingFocusMediaFile = file;
+  pendingFocusMediaPreviewURL = URL.createObjectURL(file);
+
+  const name = document.getElementById("focusMediaSelectionName");
+  const info = document.getElementById("focusMediaSelectionInfo");
+  const panel = document.getElementById("focusMediaSelection");
+  const status = document.getElementById("focusMediaUploadStatus");
+  const video = document.getElementById("focusMediaPreviewVideo");
+  const image = document.getElementById("focusMediaPreviewImage");
+  const button = document.getElementById("applyFocusMediaButton");
+  if (name) name.textContent = file.name;
+  if (info) info.textContent = `${isVideo ? "동영상" : "이미지"} · ${(file.size / (1024 * 1024)).toFixed(1)} MB · 선택한 파일을 확인한 뒤 적용하세요.`;
+  if (video) {
+    video.pause(); video.removeAttribute("src"); video.style.display = "none";
+    video.onerror = () => { if (status) status.textContent = "미리보기는 지원되지 않을 수 있지만, 파일 저장은 계속 진행할 수 있습니다."; };
+  }
+  if (image) { image.removeAttribute("src"); image.style.display = "none"; }
+  if (isVideo && video) {
+    video.src = pendingFocusMediaPreviewURL;
+    video.style.display = "block";
+    video.load();
+  } else if (image) {
+    image.src = pendingFocusMediaPreviewURL;
+    image.style.display = "block";
+  }
+  if (panel) panel.style.display = "block";
+  if (status) status.textContent = "파일이 선택됐습니다. 아래의 주황색 적용 버튼을 누르면 저장됩니다.";
+  if (button) button.disabled = false;
+  requestAnimationFrame(() => {
+    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
+
+async function saveSelectedFocusMedia() {
+  const file = pendingFocusMediaFile;
+  if (!file || !currentUser) {
+    showToast("먼저 배경 파일을 선택해 주세요.");
+    return;
+  }
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const mimeByExt = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
+  const mimeType = (file.type || mimeByExt[ext] || "application/octet-stream").toLowerCase();
+  const button = document.getElementById("applyFocusMediaButton");
+  const status = document.getElementById("focusMediaUploadStatus");
+  if (button) { button.disabled = true; button.textContent = "저장 중..."; }
+  if (status) status.textContent = "기기에 파일을 저장하고 있습니다. 큰 동영상은 잠시 기다려 주세요.";
   try {
-    showToast("배경 파일을 저장하고 있습니다...");
-    await MediaDB.saveMedia(`focus_bg_${currentUser}`, file, mimeType || (isVideo ? "video/mp4" : "image/jpeg"));
+    if (!window.indexedDB) throw new Error("Safari의 사이트 저장소를 사용할 수 없습니다. 브라우저 설정에서 사이트 데이터 저장을 허용해 주세요.");
+    await MediaDB.saveMedia(`focus_bg_${currentUser}`, file, mimeType);
     await applySavedFocusMedia();
-    showToast("배경 파일이 저장되었습니다.");
+    if (status) status.textContent = "저장 및 적용이 완료됐습니다. 타이머 화면에서 확인할 수 있습니다.";
+    showToast("배경 파일이 저장되고 적용되었습니다.");
+    pendingFocusMediaFile = null;
+    if (pendingFocusMediaPreviewURL) {
+      URL.revokeObjectURL(pendingFocusMediaPreviewURL);
+      pendingFocusMediaPreviewURL = null;
+    }
+    const input = document.getElementById("focusMediaFileInput");
+    if (input) input.value = "";
+    const panel = document.getElementById("focusMediaSelection");
+    if (panel) panel.style.display = "none";
   } catch (err) {
     console.error("Focus media upload failed:", err);
-    const reason = err && (err.name === "QuotaExceededError" ? "기기 저장 공간이 부족합니다." : err.message);
-    showToast(reason ? `배경 저장 실패: ${reason}` : "배경 파일 저장에 실패했습니다. 파일 크기나 브라우저 저장 권한을 확인해 주세요.");
+    const reason = err && (err.name === "QuotaExceededError" ? "기기 저장 공간이 부족합니다. 파일 크기가 작은 동영상으로 다시 시도해 주세요." : err.message);
+    if (status) status.textContent = reason || "저장에 실패했습니다. 파일 형식과 Safari 저장 공간을 확인해 주세요.";
+    showToast(status ? status.textContent : "배경 파일 저장에 실패했습니다.");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "✓ 이 파일을 배경으로 적용"; }
   }
-  event.target.value = "";
 }
 
 async function clearCustomFocusMedia() {
@@ -2445,7 +2544,9 @@ function renderSummaryStats() {
   let planStudy = 0, actualStudy = 0, actualSchool = 0;
 
   day.schedules.forEach(item => {
-    const dur = Math.max(0, timeToMins(item.end) - timeToMins(item.start));
+    let dur = timeToMins(item.end) - timeToMins(item.start);
+    if (dur < 0) dur += 1440;
+    dur = Math.max(0, dur);
     if (item.track === "plan" && item.category === "study") planStudy += dur;
     if (item.track === "actual") {
       if (item.category === "school") actualSchool += dur;
@@ -2474,47 +2575,51 @@ function setTimetablePart(part) {
 function renderTimetable() {
   const container = document.getElementById("timetableContainer");
   const day = getDayData(selectedDate);
+  // 선택한 날짜의 05:00부터 다음 날 05:00까지를 8시간씩 세 구간으로 나눕니다.
   const parts = [
-    { key: "morning", label: "🌅 아침 파트 (06:00 ~ 12:00)", startH: 6, endH: 12 },
-    { key: "afternoon", label: "☀️ 점심 파트 (12:00 ~ 18:00)", startH: 12, endH: 18 },
-    { key: "evening", label: "🌙 저녁 파트 (18:00 ~ 24:00)", startH: 18, endH: 24 }
+    { key: "morning", label: "🌅 1파트 (05:00 ~ 13:00)", startMin: 5 * 60, endMin: 13 * 60 },
+    { key: "afternoon", label: "☀️ 2파트 (13:00 ~ 21:00)", startMin: 13 * 60, endMin: 21 * 60 },
+    { key: "evening", label: "🌙 3파트 (21:00 ~ 다음 날 05:00)", startMin: 21 * 60, endMin: 29 * 60 }
   ];
-
   const visibleParts = currentPartFilter === "all" ? parts : parts.filter(p => p.key === currentPartFilter);
+  const toWindowMinute = (time) => {
+    const mins = timeToMins(time);
+    return mins < 5 * 60 ? mins + 1440 : mins;
+  };
 
   container.innerHTML = visibleParts.map(p => {
-    const pStartMin = p.startH * 60;
-    const pEndMin = p.endH * 60;
-    const totalHeight = (p.endH - p.startH) * 30;
-
+    const totalHeight = (p.endMin - p.startMin) * 0.5;
     let hoursHtml = "";
     let planSlots = "";
     let actualSlots = "";
-    for (let h = p.startH; h < p.endH; h++) {
-      const hh = String(h).padStart(2, "0") + ":00";
-      hoursHtml += `<div class="tt-hour-label">${String(h).padStart(2, "0")}시</div>`;
+    for (let offset = 0; offset < 8; offset++) {
+      const absoluteMin = p.startMin + offset * 60;
+      const clockMin = absoluteMin % 1440;
+      const hh = minsToTime(clockMin);
+      hoursHtml += `<div class="tt-hour-label">${hh.slice(0,2)}시</div>`;
       planSlots += `<div class="tt-slot" onclick="openScheduleModal('plan', '${hh}')"></div>`;
       actualSlots += `<div class="tt-slot" onclick="openScheduleModal('actual', '${hh}')"></div>`;
     }
 
     const renderBlocks = (track) => day.schedules
-      .filter(s => s.track === track)
-      .map(s => {
-        const sMin = timeToMins(s.start);
-        const eMin = timeToMins(s.end);
-        const visStart = Math.max(sMin, pStartMin);
-        const visEnd = Math.min(eMin, pEndMin);
+      .filter(item => item.track === track)
+      .map(item => {
+        const sMin = toWindowMinute(item.start);
+        let eMin = toWindowMinute(item.end);
+        if (eMin <= sMin) eMin += 1440;
+        const visStart = Math.max(sMin, p.startMin);
+        const visEnd = Math.min(eMin, p.endMin);
         if (visEnd <= visStart) return "";
-        const top = (visStart - pStartMin) * 0.5;
+        const top = (visStart - p.startMin) * 0.5;
         const height = Math.max(16, (visEnd - visStart) * 0.5);
-        const sub = userData.subjects.find(sub => sub.id === s.subjectId) || userData.subjects[0];
-        const isSchool = s.category === "school";
+        const sub = userData.subjects.find(subject => subject.id === item.subjectId) || userData.subjects[0];
+        const isSchool = item.category === "school";
         return `
           <div class="tt-block ${isSchool ? "is-school" : ""}"
                style="top:${top}px; height:${height}px; background:${isSchool ? "" : sub.color}; color:#fff;"
-               onclick="event.stopPropagation(); openEditSchedule('${s.id}')">
-            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${isSchool ? "🏫 " : ""}${escapeHtml(s.title)}</div>
-            ${height >= 32 ? `<div style="font-size:0.65rem;opacity:0.9;">${s.start}~${s.end}</div>` : ""}
+               onclick="event.stopPropagation(); openEditSchedule('${item.id}')">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${isSchool ? "🏫 " : ""}${escapeHtml(item.title)}</div>
+            ${height >= 32 ? `<div style="font-size:0.65rem;opacity:0.9;">${item.start}~${item.end}</div>` : ""}
           </div>
         `;
       }).join("");
@@ -2540,7 +2645,7 @@ function openScheduleModal(track, startTime) {
   document.getElementById("schedSubGroup").style.display = "block";
   document.getElementById("schedTitle").value = "";
   document.getElementById("schedStart").value = startTime;
-  document.getElementById("schedEnd").value = minsToTime(Math.min(1439, timeToMins(startTime) + 60));
+  document.getElementById("schedEnd").value = minsToTime((timeToMins(startTime) + 60) % 1440);
   document.getElementById("btnDeleteSched").style.display = "none";
   openModal("scheduleModal");
 }
@@ -2571,8 +2676,8 @@ function saveScheduleItem() {
   const end = document.getElementById("schedEnd").value;
   const rawTitle = document.getElementById("schedTitle").value.trim();
 
-  if (timeToMins(end) <= timeToMins(start)) {
-    showToast("종료 시각은 시작 시각보다 늦어야 합니다.");
+  if (!start || !end || timeToMins(end) === timeToMins(start)) {
+    showToast("시작과 종료 시각을 확인해 주세요. 자정을 넘기는 일정은 종료 시각을 다음 날 시간으로 선택하면 됩니다.");
     return;
   }
   const sub = userData.subjects.find(s => s.id === subjectId) || userData.subjects[0];
@@ -2715,7 +2820,9 @@ function renderWeeklyChart() {
     if (rec) {
       rec.schedules.forEach(item => {
         if (item.track === "actual") {
-          const dur = Math.max(0, timeToMins(item.end) - timeToMins(item.start));
+          let dur = timeToMins(item.end) - timeToMins(item.start);
+    if (dur < 0) dur += 1440;
+    dur = Math.max(0, dur);
           if (item.category === "school") schMin += dur;
           else sMin += dur;
         }
