@@ -859,6 +859,78 @@
       .widget-header { margin-bottom:3px !important; }
     }
 
+
+
+    /* 자유 배치 위젯 캔버스: 빈 셀을 미리 확보하고 크기에 맞춰 자동 재배치 */
+    .widget-grid {
+      display:grid !important;
+      grid-template-columns:repeat(12,minmax(0,1fr)) !important;
+      grid-auto-rows:42px !important;
+      grid-auto-flow:row dense !important;
+      align-items:stretch !important;
+      gap:10px !important;
+      height:auto !important;
+      min-height:0 !important;
+      overflow:visible !important;
+      padding:2px !important;
+      background-image:linear-gradient(to right, rgba(145,135,120,.055) 1px, transparent 1px),linear-gradient(to bottom, rgba(145,135,120,.055) 1px, transparent 1px);
+      background-size:calc((100% - 110px)/12 + 9.17px) 52px;
+    }
+    .widget-card, .widget-card.span-6, .widget-card.span-12 {
+      grid-column:span 6;
+      grid-row:span 5;
+      width:auto !important;
+      height:auto !important;
+      min-width:0 !important;
+      min-height:0 !important;
+      max-width:none !important;
+      overflow:auto !important;
+      scrollbar-width:thin;
+      box-sizing:border-box !important;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+      container-type:inline-size;
+    }
+    .widget-card[data-widget-id="summary"] { grid-column:span 12; grid-row:span 3; }
+    .widget-card > :not(.widget-edit-bar):not(.widget-header) { min-width:0; }
+    .widget-card .widget-header, .widget-card .widget-edit-bar { flex:0 0 auto; }
+    .widget-card .widget-resize-handle { display:none; }
+    .widget-grid.editing .widget-card { outline:1px dashed #d6a56b; outline-offset:-3px; }
+    .widget-grid.editing .widget-resize-handle {
+      display:flex; position:absolute; z-index:30; right:3px; bottom:3px;
+      width:28px; height:28px; border:1px solid #d9a15d; border-radius:8px;
+      align-items:center; justify-content:center; background:#fff8ed; color:#a45b0a;
+      font-size:17px; line-height:1; touch-action:none; cursor:nwse-resize;
+      box-shadow:none; padding:0;
+    }
+    .widget-grid.editing .widget-drag-handle { touch-action:none; cursor:grab; }
+    .widget-card.resizing { outline:2px solid #d97706 !important; }
+    .widget-card :is(input,select,textarea,button) { min-width:0; max-width:100%; }
+    .widget-card :is(table,.table-wrap) { max-width:100%; }
+    @container (max-width: 360px) {
+      .widget-title { font-size:.78rem !important; }
+      .widget-header { flex-wrap:wrap !important; }
+      .widget-card .stat-label { font-size:.65rem !important; }
+      .widget-card .stat-val { font-size:.9rem !important; }
+      .widget-card .btn { font-size:.68rem !important; padding:4px 6px !important; }
+    }
+    @container (min-width: 520px) {
+      .widget-card .widget-title { font-size:1rem !important; }
+      .widget-card .widget-header { margin-bottom:10px !important; }
+    }
+    @media (max-width: 900px) {
+      .widget-grid { grid-template-columns:repeat(12,minmax(0,1fr)) !important; grid-auto-rows:38px !important; gap:7px !important; }
+      .widget-card { grid-column:span 12; }
+      .widget-card[data-widget-id="summary"] { grid-column:span 12; }
+    }
+    @media (min-width:760px) and (orientation:landscape) {
+      html, body { overflow:auto !important; height:auto !important; }
+      body { display:block !important; }
+      .dashboard-container { height:auto !important; max-height:none !important; min-height:0 !important; overflow:visible !important; padding:8px 10px 24px !important; }
+      .widget-grid { grid-template-columns:repeat(12,minmax(0,1fr)) !important; grid-auto-rows:42px !important; height:auto !important; overflow:visible !important; }
+      .widget-card[data-widget-id="summary"] { grid-column:span 12 !important; }
+    }
 </style>
 </head>
 <body>
@@ -1489,12 +1561,12 @@ let timerPaused = false;
 let timerContext = { category: "study", subjectId: "math", title: "" };
 
 const DEFAULT_WIDGETS = [
-  { id: "summary", name: "📊 오늘의 요약 통계", visible: true, span: 12 },
-  { id: "timerTodo", name: "⏱️ 감성 집중 타이머 & 할 일", visible: true, span: 6 },
-  { id: "timetable", name: "📅 3파트 계획 vs 실제 타임테이블", visible: true, span: 6 },
-  { id: "heatmap", name: "🟩 월간 공부 농도 히트맵 달력", visible: true, span: 6 },
-  { id: "weekly", name: "📈 주간 누적 학습 그래프", visible: true, span: 6 },
-  { id: "reflection", name: "📝 오늘의 1일 기록 & 회고", visible: true, span: 6 }
+  { id: "summary", name: "📊 오늘의 요약 통계", visible: true, span: 12, rows: 3 },
+  { id: "timerTodo", name: "⏱️ 감성 집중 타이머 & 할 일", visible: true, span: 6, rows: 5 },
+  { id: "timetable", name: "📅 3파트 계획 vs 실제 타임테이블", visible: true, span: 6, rows: 6 },
+  { id: "heatmap", name: "🟩 월간 공부 농도 히트맵 달력", visible: true, span: 6, rows: 5 },
+  { id: "weekly", name: "📈 주간 누적 학습 그래프", visible: true, span: 6, rows: 5 },
+  { id: "reflection", name: "📝 오늘의 1일 기록 & 회고", visible: true, span: 6, rows: 5 }
 ];
 
 const BUILTIN_STICKERS = [
@@ -1775,12 +1847,19 @@ function applyWidgetLayout() {
   userData.widgets.forEach(w => {
     const card = grid.querySelector(`[data-widget-id="${w.id}"]`);
     if (!card) return;
+    if (!Number.isFinite(Number(w.span))) w.span = w.id === "summary" ? 12 : 6;
+    if (!Number.isFinite(Number(w.rows))) w.rows = w.id === "summary" ? 3 : (w.id === "timetable" ? 6 : 5);
+    w.span = Math.max(3, Math.min(12, Math.round(Number(w.span))));
+    w.rows = Math.max(3, Math.min(12, Math.round(Number(w.rows))));
     card.style.display = w.visible ? "flex" : "none";
-    card.classList.remove("span-6", "span-12");
-    card.classList.add(`span-${w.span || 6}`);
-    grid.appendChild(card); // 저장된 순서대로 DOM 재배열
+    card.style.setProperty("grid-column", `span ${w.span}`, "important");
+    card.style.setProperty("grid-row", `span ${w.rows}`, "important");
+    card.dataset.widgetWidth = w.span;
+    card.dataset.widgetHeight = w.rows;
+    grid.appendChild(card);
   });
   renderWidgetManagerList();
+  updateWidgetResizeHandles();
 }
 
 function toggleWidgetSpan(widgetId) {
@@ -1828,43 +1907,94 @@ function renderWidgetManagerList() {
   `).join("");
 }
 
+function updateWidgetResizeHandles() {
+  const grid = document.getElementById("widgetGrid");
+  if (!grid) return;
+  grid.querySelectorAll(".widget-card").forEach(card => {
+    if (card.querySelector(".widget-resize-handle")) return;
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "widget-resize-handle";
+    handle.setAttribute("aria-label", "위젯 크기 조절");
+    handle.title = "모서리를 드래그해 위젯 크기 조절";
+    handle.textContent = "◢";
+    card.appendChild(handle);
+  });
+}
+
 function initDragAndDropWidgets() {
   const grid = document.getElementById("widgetGrid");
-  let activeCard = null, pointerId = null;
+  let activeCard = null, pointerId = null, mode = null;
+  let startX = 0, startY = 0, startCols = 6, startRows = 5;
 
+  updateWidgetResizeHandles();
   grid.querySelectorAll(".widget-card").forEach(card => {
     const bar = card.querySelector(".widget-edit-bar");
     if (!bar || bar.querySelector(".widget-drag-handle")) return;
     const handle = document.createElement("button");
-    handle.type = "button"; handle.className = "widget-drag-handle";
-    handle.textContent = "⠿"; handle.title = "누른 채 드래그하여 이동";
+    handle.type = "button";
+    handle.className = "widget-drag-handle";
+    handle.textContent = "⠿";
+    handle.title = "누른 채 드래그하여 이동";
     handle.setAttribute("aria-label", "위젯 이동");
     bar.prepend(handle);
   });
 
   grid.addEventListener("pointerdown", e => {
-    const handle = e.target.closest(".widget-drag-handle");
-    if (!isEditMode || !handle) return;
-    activeCard = handle.closest(".widget-card"); pointerId = e.pointerId;
-    handle.setPointerCapture(pointerId); activeCard.classList.add("dragging");
+    const resizeHandle = e.target.closest(".widget-resize-handle");
+    const dragHandle = e.target.closest(".widget-drag-handle");
+    if (!isEditMode || (!resizeHandle && !dragHandle)) return;
+    activeCard = e.target.closest(".widget-card");
+    if (!activeCard) return;
+    pointerId = e.pointerId;
+    mode = resizeHandle ? "resize" : "move";
+    startX = e.clientX; startY = e.clientY;
+    const item = userData.widgets.find(w => w.id === activeCard.dataset.widgetId);
+    startCols = Number(item?.span || 6); startRows = Number(item?.rows || 5);
+    (resizeHandle || dragHandle).setPointerCapture(pointerId);
+    activeCard.classList.add(mode === "resize" ? "resizing" : "dragging");
     e.preventDefault();
   });
+
   grid.addEventListener("pointermove", e => {
     if (!activeCard || e.pointerId !== pointerId) return;
+    if (mode === "resize") {
+      const rect = grid.getBoundingClientRect();
+      const styles = getComputedStyle(grid);
+      const gap = parseFloat(styles.columnGap) || 0;
+      const cellWidth = (rect.width - gap * 11) / 12;
+      const rowStep = (parseFloat(styles.gridAutoRows) || 42) + (parseFloat(styles.rowGap) || 0);
+      const dx = Math.round((e.clientX - startX) / (cellWidth + gap));
+      const dy = Math.round((e.clientY - startY) / rowStep);
+      const item = userData.widgets.find(w => w.id === activeCard.dataset.widgetId);
+      if (!item) return;
+      item.span = Math.max(3, Math.min(12, startCols + dx));
+      item.rows = Math.max(3, Math.min(12, startRows + dy));
+      activeCard.style.setProperty("grid-column", `span ${item.span}`, "important");
+      activeCard.style.setProperty("grid-row", `span ${item.rows}`, "important");
+      activeCard.dataset.widgetWidth = item.span;
+      activeCard.dataset.widgetHeight = item.rows;
+      activeCard.style.setProperty("--widget-resize-progress", "1");
+      return;
+    }
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".widget-card");
     if (!target || target === activeCard || target.parentElement !== grid) return;
     const r = target.getBoundingClientRect();
     if (e.clientY > r.top + r.height / 2) target.after(activeCard);
     else target.before(activeCard);
   });
+
   const finish = e => {
     if (!activeCard || (e && e.pointerId !== pointerId)) return;
-    activeCard.classList.remove("dragging"); activeCard = null; pointerId = null;
+    activeCard.classList.remove("dragging", "resizing");
+    activeCard = null; pointerId = null;
     if (userData) {
       userData.widgets = [...grid.querySelectorAll(".widget-card")]
         .map(c => userData.widgets.find(w => w.id === c.dataset.widgetId)).filter(Boolean);
       saveUserData();
+      applyWidgetLayout();
     }
+    mode = null;
   };
   grid.addEventListener("pointerup", finish);
   grid.addEventListener("pointercancel", finish);
