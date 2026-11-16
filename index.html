@@ -931,6 +931,26 @@
       .widget-grid { grid-template-columns:repeat(12,minmax(0,1fr)) !important; grid-auto-rows:42px !important; height:auto !important; overflow:visible !important; }
       .widget-card[data-widget-id="summary"] { grid-column:span 12 !important; }
     }
+
+    /* iPad Safari: keep the media apply action visible outside the conditional preview panel. */
+    #focusBgModal .modal-box { max-height: 88vh; max-height: 88dvh; overflow-y: auto; }
+    #focusMediaApplyRow { display:flex !important; visibility:visible !important; opacity:1 !important; }
+    #focusMediaApplyButton, #applyFocusMediaButton { display:inline-flex !important; visibility:visible !important; opacity:1 !important; min-height:48px; }
+    #applyFocusMediaButton:disabled { opacity:.48 !important; }
+
+</style>
+
+<style id="timetable-alignment-fix">
+/* 시간 눈금과 일정 블록을 같은 30px/시간 기준으로 계산 */
+@media (min-width:760px) and (orientation:landscape) {
+  #timetableContainer .tt-grid { height:242px !important; min-height:242px !important; box-sizing:border-box !important; }
+  #timetableContainer .tt-time-col,
+  #timetableContainer .tt-lane { height:240px !important; min-height:240px !important; }
+  #timetableContainer .tt-hour-label,
+  #timetableContainer .tt-slot { height:30px !important; min-height:30px !important; max-height:30px !important; box-sizing:border-box !important; flex:none !important; }
+  #timetableContainer .tt-lane { position:relative !important; }
+  #timetableContainer .tt-block { box-sizing:border-box !important; }
+}
 </style>
 </head>
 <body>
@@ -1298,12 +1318,12 @@
       <div id="focusMediaSelectionInfo" style="font-size:0.78rem;color:var(--text-sub);margin-top:4px;"></div>
       <video id="focusMediaPreviewVideo" controls playsinline muted style="display:none;width:100%;max-height:180px;object-fit:contain;margin-top:10px;border-radius:8px;background:#111;"></video>
       <img id="focusMediaPreviewImage" alt="선택한 배경 미리보기" style="display:none;width:100%;max-height:180px;object-fit:contain;margin-top:10px;border-radius:8px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-        <button type="button" class="btn btn-primary" id="applyFocusMediaButton" style="min-height:44px;flex:1 1 180px;" onclick="saveSelectedFocusMedia()">✓ 이 파일을 배경으로 적용</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="resetFocusMediaSelection()">다시 선택</button>
-      </div>
     </div>
-    <div id="focusMediaUploadStatus" role="status" aria-live="polite" style="font-size:0.8rem;color:var(--text-sub);margin-top:8px;min-height:1.2em;"></div>
+    <div id="focusMediaApplyRow" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;position:relative;z-index:5;">
+      <button type="button" class="btn btn-primary" id="applyFocusMediaButton" disabled style="min-height:48px;flex:1 1 180px;display:inline-flex;visibility:visible;opacity:1;" onclick="saveSelectedFocusMedia()">✓ 이 파일을 배경으로 적용</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="resetFocusMediaSelection()">다시 선택</button>
+    </div>
+    <div id="focusMediaUploadStatus" role="status" aria-live="polite" style="font-size:0.8rem;color:var(--text-sub);margin-top:8px;min-height:1.4em;overflow-wrap:anywhere;"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px;">
       <button class="btn btn-danger btn-sm" onclick="clearCustomFocusMedia()">업로드 배경 초기화 (기본 테마 사용)</button>
       <button class="btn btn-primary btn-sm" onclick="closeModal('focusBgModal')">확인</button>
@@ -2179,7 +2199,6 @@ function openFocusBgModal() {
   const input = document.getElementById("focusMediaFileInput");
   if (input && !input.dataset.bound) {
     input.addEventListener("change", handleFocusMediaUpload);
-    input.addEventListener("input", handleFocusMediaUpload);
     input.dataset.bound = "1";
   }
 }
@@ -2199,6 +2218,8 @@ function resetFocusMediaSelection() {
   const video = document.getElementById("focusMediaPreviewVideo");
   const image = document.getElementById("focusMediaPreviewImage");
   if (panel) panel.style.display = "none";
+  const applyButton = document.getElementById("applyFocusMediaButton");
+  if (applyButton) { applyButton.disabled = true; applyButton.textContent = "✓ 이 파일을 배경으로 적용"; }
   if (video) { video.pause(); video.removeAttribute("src"); video.load(); video.style.display = "none"; }
   if (image) { image.removeAttribute("src"); image.style.display = "none"; }
   const status = document.getElementById("focusMediaUploadStatus");
@@ -2251,9 +2272,11 @@ function handleFocusMediaUpload(event) {
   }
   if (panel) panel.style.display = "block";
   if (status) status.textContent = "파일이 선택됐습니다. 아래의 주황색 적용 버튼을 누르면 저장됩니다.";
-  if (button) button.disabled = false;
+  if (button) { button.disabled = false; button.style.display = "inline-flex"; button.style.visibility = "visible"; button.style.opacity = "1"; }
+  const modalBox = document.querySelector("#focusBgModal .modal-box");
   requestAnimationFrame(() => {
-    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const applyRow = document.getElementById("focusMediaApplyRow");
+    if (modalBox && applyRow) modalBox.scrollTo({ top: Math.max(0, applyRow.offsetTop - 24), behavior: "smooth" });
   });
 }
 
@@ -2285,6 +2308,7 @@ async function saveSelectedFocusMedia() {
     if (input) input.value = "";
     const panel = document.getElementById("focusMediaSelection");
     if (panel) panel.style.display = "none";
+    if (button) button.disabled = true;
   } catch (err) {
     console.error("Focus media upload failed:", err);
     const reason = err && (err.name === "QuotaExceededError" ? "기기 저장 공간이 부족합니다. 파일 크기가 작은 동영상으로 다시 시도해 주세요." : err.message);
@@ -2588,7 +2612,8 @@ function renderTimetable() {
   };
 
   container.innerHTML = visibleParts.map(p => {
-    const totalHeight = (p.endMin - p.startMin) * 0.5;
+    const hourHeight = 30;
+    const totalHeight = 8 * hourHeight; // 8개 시간 행과 일정 블록 좌표를 동일한 240px 기준으로 맞춤
     let hoursHtml = "";
     let planSlots = "";
     let actualSlots = "";
@@ -2610,8 +2635,8 @@ function renderTimetable() {
         const visStart = Math.max(sMin, p.startMin);
         const visEnd = Math.min(eMin, p.endMin);
         if (visEnd <= visStart) return "";
-        const top = (visStart - p.startMin) * 0.5;
-        const height = Math.max(16, (visEnd - visStart) * 0.5);
+        const top = (visStart - p.startMin) * (hourHeight / 60);
+        const height = Math.max(1, (visEnd - visStart) * (hourHeight / 60));
         const sub = userData.subjects.find(subject => subject.id === item.subjectId) || userData.subjects[0];
         const isSchool = item.category === "school";
         return `
@@ -2999,5 +3024,44 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 </script>
+
+<style id="final-timetable-grid-fix">
+/* 시간표 정렬 최종 보정: 시간 라벨, 빈 시간칸, 일정 블록 모두 동일한 30px/시간 좌표계 사용 */
+#timetableContainer { min-width:0; overflow:visible !important; }
+#timetableContainer .tt-part-section { min-width:0; margin:0 0 10px !important; }
+#timetableContainer .tt-grid {
+  display:grid !important; grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) !important;
+  grid-template-rows:240px !important; gap:0 !important;
+  height:240px !important; min-height:240px !important; max-height:240px !important;
+  box-sizing:border-box !important; overflow:hidden !important;
+}
+#timetableContainer .tt-time-col,
+#timetableContainer .tt-lane {
+  display:grid !important; grid-template-rows:repeat(8,30px) !important;
+  grid-auto-rows:30px !important; align-content:start !important;
+  height:240px !important; min-height:240px !important; max-height:240px !important;
+  min-width:0 !important; box-sizing:border-box !important; position:relative !important;
+}
+#timetableContainer .tt-hour-label,
+#timetableContainer .tt-slot {
+  display:flex !important; height:30px !important; min-height:30px !important; max-height:30px !important;
+  margin:0 !important; padding:3px 1px 0 !important; box-sizing:border-box !important;
+  border-bottom:1px solid var(--border) !important; flex:none !important;
+}
+#timetableContainer .tt-slot { display:block !important; width:100% !important; }
+#timetableContainer .tt-block {
+  position:absolute !important; box-sizing:border-box !important; margin:0 !important;
+  z-index:3 !important; overflow:hidden !important; min-height:1px !important;
+}
+#timetableContainer .tt-compare-header {
+  display:grid !important; grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) !important;
+  gap:0 !important; box-sizing:border-box !important;
+}
+@media (max-width:759px) {
+  #timetableContainer .tt-grid { grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) !important; }
+  #timetableContainer .tt-compare-header { grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) !important; }
+}
+</style>
+
 </body>
 </html>
