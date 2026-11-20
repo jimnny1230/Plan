@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>아기자기 공부 시간대 비교 플래너</title>
+    <title>아기자기 패드 위젯 대시보드</title>
     <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 교보손글씨체 웹폰트 및 로컬 폰트 정의 */
+        /* 제공된 교보손글씨체 웹폰트 및 로컬 폰트 정의 */
         @font-face {
             font-family: 'KyoboHandwriting2022khn';
             src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2304-2@1.0/KyoboHandwriting2022khn.woff2') format('woff2');
@@ -25,7 +25,7 @@
         }
 
         body {
-            background-color: #f4f6f9;
+            background-color: #f7f9fc;
             margin: 0;
             padding: 0;
             display: flex;
@@ -33,12 +33,11 @@
             align-items: center;
             min-height: 100vh;
             color: #4a5568;
-            /* 가로 스크롤 방지 */
             overflow-x: hidden;
         }
 
-        /* 패드 화면 비율(768x1024)에 최적화된 컨테이너 - 그림자 없이 깔끔한 테두리 */
-        .pad-frame {
+        /* 패드 화면 프레임 (명암 제거, 둥글고 깔끔한 테두리 중심) */
+        .pad-container {
             width: 100%;
             max-width: 768px;
             height: 100vh;
@@ -52,7 +51,7 @@
         }
 
         @media (max-width: 768px) {
-            .pad-frame {
+            .pad-container {
                 border-radius: 0;
                 border-width: 0;
                 max-height: none;
@@ -60,7 +59,7 @@
             }
         }
 
-        /* 커스텀 스크롤바 (얇고 아기자기하게) */
+        /* 아기자기한 얇은 스크롤바 */
         .custom-scroll::-webkit-scrollbar {
             width: 6px;
         }
@@ -72,186 +71,142 @@
             border-radius: 10px;
         }
 
-        /* 파스텔 플랫 버튼 스타일 (명암 제거, 테두리 강조) */
-        .pastel-btn {
-            transition: background-color 0.15s ease, transform 0.1s ease;
+        /* 플랫 버튼 인터랙션 (명암 없이 눌림 효과만 부여) */
+        .flat-btn {
+            transition: background-color 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
         }
-        .pastel-btn:active {
+        .flat-btn:active {
             transform: scale(0.97);
         }
 
-        /* 애니메이션 바 */
+        /* 가로 비교 막대 애니메이션 */
         .bar-fill {
-            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
     </style>
 </head>
 <body>
 
-    <div class="pad-frame" id="appRoot">
-        <!-- 1. 상단 헤더 영역: 날짜 이동, 등교 여부 토글, 폰트 선택 -->
-        <header class="px-5 py-4 bg-[#fffdf9] border-b-2 border-dashed border-[#e2e8f0] flex flex-wrap items-center justify-between gap-3 shrink-0">
-            <!-- 날짜 선택 컨트롤 -->
-            <div class="flex items-center gap-2 bg-white border-2 border-[#cbd5e1] rounded-2xl px-3 py-1.5">
-                <button onclick="changeDate(-1)" class="pastel-btn px-2 py-1 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-sm font-bold text-[#475569]" title="이전 날짜">◀</button>
-                <div class="flex flex-col items-center min-w-[115px]">
-                    <span id="displayDate" class="text-base font-bold text-[#334155]">2026.11.20 (금)</span>
-                    <span id="dateBadge" class="text-xs text-[#94a3b8]">오늘</span>
-                </div>
-                <button onclick="changeDate(1)" class="pastel-btn px-2 py-1 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-sm font-bold text-[#475569]" title="다음 날짜">▶</button>
+    <div class="pad-container" id="appContainer">
+        <!-- 1. 상단 헤더 영역 (기존 디자인 유지 + 위젯 관리 버튼 통합) -->
+        <header class="px-6 py-4 bg-white border-b-2 border-dashed border-[#edf2f7] flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl">🧸</span>
+                <h1 class="text-2xl font-bold text-[#4a5568]">아기자기 패드</h1>
             </div>
 
-            <!-- 등교 여부 (학교 간 날 / 안 간 날) 토글 버튼 -->
+            <!-- 우측 컨트롤 영역: 위젯 관리 토글 + 폰트 선택기 (겹침 방지 gap 적용) -->
             <div class="flex items-center gap-2">
-                <button id="schoolToggleBtn" onclick="toggleSchoolDay()" class="pastel-btn flex items-center gap-2 px-4 py-2 rounded-2xl border-2 font-bold text-sm">
-                    <span id="schoolIcon">🏫</span>
-                    <span id="schoolStatusText">학교 간 날</span>
+                <button onclick="toggleWidgetDrawer()" id="widgetDrawerToggleBtn" class="flat-btn flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border-2 border-[#cbd5e0] bg-[#f8fafc] hover:bg-[#edf2f7] text-sm font-bold text-[#4a5568]">
+                    <span>🧩</span>
+                    <span>위젯 관리</span>
                 </button>
 
-                <!-- 폰트 변경 셀렉터 -->
-                <select id="fontSelector" onchange="changeFont(this.value)" class="border-2 border-[#cbd5e1] rounded-2xl px-3 py-2 text-sm bg-white text-[#475569] outline-none cursor-pointer">
-                    <option value="'KyoboHandwriting2022khn', sans-serif">교보손글씨</option>
-                    <option value="'Malgun Gothic', sans-serif">기본 고딕</option>
+                <select id="fontSelector" onchange="changeFont(this.value)" class="text-sm px-3 py-2 border-2 border-[#cbd5e0] rounded-2xl bg-white text-[#4a5568] outline-none cursor-pointer">
+                    <option value="'KyoboHandwriting2022khn', sans-serif">교보손글씨체</option>
+                    <option value="'Malgun Gothic', sans-serif">기본 고딕체</option>
                 </select>
             </div>
         </header>
 
-        <!-- 2. 상단 요약 & 실시간 타이머 바 (텍스트와 버튼이 절대 겹치지 않는 독립 구조) -->
-        <section class="px-5 py-3 bg-[#f8fafc] border-b-2 border-[#e2e8f0] flex flex-wrap items-center justify-between gap-3 shrink-0">
-            <!-- 오늘 총 공부 시간 요약 -->
-            <div class="flex items-center gap-3">
-                <div class="bg-[#fef3c7] border-2 border-[#fde68a] rounded-2xl px-4 py-2 flex items-center gap-2">
-                    <span class="text-lg">⏱️</span>
-                    <div>
-                        <div class="text-xs text-[#b45309]">선택일 총 공부</div>
-                        <div id="totalStudyTimeText" class="text-lg font-bold text-[#92400e]">0시간 0분</div>
-                    </div>
+        <!-- 2. 위젯 관리 서랍 (Widget Management Bar/Drawer - 펼치기/접기 가능) -->
+        <section id="widgetDrawer" class="hidden px-6 py-4 bg-[#f8fafc] border-b-2 border-[#e2e8f0] shrink-0 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-base font-bold text-[#334155]">🧩 대시보드 위젯 설정</h2>
+                    <p class="text-xs text-[#64748b]">원하는 위젯을 켜고 끄거나, 화살표 버튼으로 위아래 배치를 바꿀 수 있어요.</p>
                 </div>
+                <button onclick="resetWidgetLayout()" class="flat-btn px-3 py-1.5 rounded-xl bg-white border-2 border-[#cbd5e1] text-xs font-bold text-[#475569] hover:bg-[#f1f5f9]">
+                    위젯 배치 초기화
+                </button>
             </div>
 
-            <!-- 미니 스톱워치 타이머 (현재 시간대에 자동 누적) -->
-            <div class="flex items-center gap-2 bg-white border-2 border-[#bae6fd] rounded-2xl px-3 py-2">
-                <div class="flex flex-col pr-2">
-                    <span class="text-xs text-[#0284c7]" id="timerSlotLabel">오후 (12~18시) 측정</span>
-                    <span id="stopwatchDisplay" class="text-base font-bold text-[#0369a1] tracking-wider">00:00:00</span>
-                </div>
-                <button id="timerToggleBtn" onclick="toggleTimer()" class="pastel-btn px-3 py-2 rounded-xl bg-[#38bdf8] text-white text-sm font-bold hover:bg-[#0284c7]">
-                    시작
-                </button>
-                <button onclick="saveTimerToSlot()" class="pastel-btn px-3 py-2 rounded-xl bg-[#a7f3d0] text-[#065f46] border border-[#6ee7b7] text-sm font-bold hover:bg-[#6ee7b7]" title="측정된 분을 기록에 반영">
-                    반영
-                </button>
+            <!-- 위젯 목록 및 순서/표시 컨트롤 (텍스트와 버튼이 절대 겹치지 않는 독립 flex 구조) -->
+            <div id="widgetControlList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- JS에서 동적으로 렌더링 -->
             </div>
         </section>
 
-        <!-- 3. 메인 스크롤 영역 (시간대별 비교 차트 + 시간대별 기록 입력) -->
-        <main class="flex-1 overflow-y-auto custom-scroll p-5 space-y-5">
-
-            <!-- [핵심 기능] 시간대별 공부 시간 비교 카드 -->
-            <div class="bg-[#fffaf0] border-2 border-[#fed7aa] rounded-3xl p-5 space-y-4">
-                <!-- 카드 상단: 제목 + 비교 기준 선택 탭 (겹침 방지를 위해 flex-wrap 및 gap 확보) -->
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-dashed border-[#ffedd5] pb-3">
-                    <div>
-                        <h2 class="text-lg font-bold text-[#c2410c] flex items-center gap-1.5">
-                            <span>📊</span> 시간대별 공부 시간 비교
-                        </h2>
-                        <p id="compareSubtitle" class="text-xs text-[#9a3412] mt-0.5">전날(어제) 공부 기록과 비교하고 있어요</p>
-                    </div>
-
-                    <!-- 비교 기준 선택 버튼 그룹 -->
-                    <div class="flex flex-wrap gap-1.5 bg-white p-1.5 rounded-2xl border-2 border-[#fed7aa]">
-                        <button onclick="setCompareMode('yesterday')" id="tab-yesterday" class="pastel-btn px-3 py-1.5 rounded-xl text-xs font-bold">
-                            전날 대비
-                        </button>
-                        <button onclick="setCompareMode('allAvg')" id="tab-allAvg" class="pastel-btn px-3 py-1.5 rounded-xl text-xs font-bold">
-                            전체 평균
-                        </button>
-                        <button onclick="setCompareMode('typeAvg')" id="tab-typeAvg" class="pastel-btn px-3 py-1.5 rounded-xl text-xs font-bold">
-                            등교/휴일 평균
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 범례 표시 -->
-                <div class="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
-                    <div class="flex items-center gap-4">
-                        <span class="flex items-center gap-1.5 font-bold text-[#ea580c]">
-                            <span class="w-3 h-3 rounded-full bg-[#fb923c] inline-block"></span> 선택일 기록
-                        </span>
-                        <span class="flex items-center gap-1.5 font-bold text-[#64748b]">
-                            <span class="w-3 h-3 rounded-full bg-[#cbd5e1] inline-block"></span> <span id="legendCompareLabel">전날 기록</span>
-                        </span>
-                    </div>
-                    <div id="totalDiffBadge" class="px-2.5 py-1 rounded-xl bg-white border border-[#fed7aa] font-bold text-[#c2410c]">
-                        총 +0분 차이
-                    </div>
-                </div>
-
-                <!-- 시간대별 듀얼 가로 막대 그래프 컨테이너 -->
-                <div id="comparisonChartContainer" class="space-y-3 pt-1">
-                    <!-- JS에서 4개 시간대(오전, 오후, 저녁, 심야) 그래프 렌더링 -->
-                </div>
-            </div>
-
-            <!-- [기록 입력] 시간대별 공부 시간 직접 조절 카드 -->
-            <div class="bg-[#f0fdf4] border-2 border-[#bbf7d0] rounded-3xl p-5 space-y-4">
-                <div class="flex flex-wrap items-center justify-between gap-2 border-b-2 border-dashed border-[#dcfce7] pb-3">
-                    <div>
-                        <h2 class="text-lg font-bold text-[#15803d] flex items-center gap-1.5">
-                            <span>✏️</span> 시간대별 공부 기록 입력
-                        </h2>
-                        <p class="text-xs text-[#166534] mt-0.5">버튼을 눌러 시간대별 공부 시간(분)을 간편하게 추가/수정하세요</p>
-                    </div>
-                    <button onclick="resetSampleData()" class="pastel-btn px-3 py-1.5 rounded-xl bg-white border-2 border-[#bbf7d0] text-xs font-bold text-[#15803d] hover:bg-[#dcfce7]">
-                        예시 데이터 복원
-                    </button>
-                </div>
-
-                <!-- 4개 시간대 입력 리스트 (텍스트와 조작 버튼 완벽 분리) -->
-                <div id="timeSlotsInputContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <!-- JS에서 렌더링 -->
-                </div>
-            </div>
-
+        <!-- 3. 메인 컨텐츠 영역 (모듈형 위젯들이 순서대로 렌더링되는 공간) -->
+        <main id="widgetCanvas" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-5">
+            <!-- JS에서 활성화된 위젯들을 순서대로 렌더링 -->
         </main>
 
-        <!-- 4. 하단 안내 메시지 바 (alert() 대신 사용하는 토스트/상태 영역) -->
-        <footer class="px-5 py-3 bg-[#f8fafc] border-t-2 border-dashed border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b] shrink-0">
-            <span id="statusMessage">💡 주말은 자동으로 '학교 안 간 날(휴일)'로 설정되며, 상단 버튼으로 언제든 변경할 수 있어요!</span>
-            <span class="font-bold text-[#94a3b8] hidden sm:inline">자동 저장됨</span>
+        <!-- 4. 하단 네비게이션 및 알림 상태 바 (기존 하단 네비게이션 유지) -->
+        <footer class="px-6 py-3 bg-white border-t-2 border-dashed border-[#edf2f7] flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <!-- 하단 탭 네비게이션 -->
+            <div class="flex items-center gap-2">
+                <button onclick="switchBottomTab('home')" id="nav-home" class="flat-btn px-4 py-2 rounded-xl text-sm font-bold bg-[#ebf8ff] text-[#3182ce]">
+                    홈 대시보드
+                </button>
+                <button onclick="switchBottomTab('widgets')" id="nav-widgets" class="flat-btn px-4 py-2 rounded-xl text-sm font-bold text-[#a0aec0] hover:bg-[#f7fafc]">
+                    위젯 편집
+                </button>
+                <button onclick="switchBottomTab('info')" id="nav-info" class="flat-btn px-4 py-2 rounded-xl text-sm font-bold text-[#a0aec0] hover:bg-[#f7fafc]">
+                    안내
+                </button>
+            </div>
+
+            <!-- 상태 메시지 토스트 (alert() 대체용) -->
+            <div id="toastMessage" class="text-xs font-bold text-[#718096] truncate max-w-full sm:max-w-[340px]">
+                ✨ 모든 위젯 설정과 공부 기록이 자동 저장됩니다.
+            </div>
         </footer>
     </div>
 
     <script>
         /**
-         * 시간대 정의 (하루를 4개의 주요 학습 시간대로 구분)
+         * ==========================================
+         * 1. 상수 및 스토리지 키 정의
+         * ==========================================
          */
+        const WIDGET_STORAGE_KEY = 'cute_pad_widgets_state_v1';
+        const STUDY_STORAGE_KEY = 'cute_pad_study_records_v1';
+
         const TIME_SLOTS = [
-            { id: 'morning', label: '오전 (06~12시)', icon: '🌅', maxMins: 360 },
-            { id: 'afternoon', label: '오후 (12~18시)', icon: '☀️', maxMins: 360 },
-            { id: 'evening', label: '저녁 (18~22시)', icon: '🌆', maxMins: 240 },
-            { id: 'night', label: '심야 (22~02시)', icon: '🌙', maxMins: 240 }
+            { id: 'morning', label: '오전 (06~12시)', shortLabel: '오전', icon: '🌅' },
+            { id: 'afternoon', label: '오후 (12~18시)', shortLabel: '오후', icon: '☀️' },
+            { id: 'evening', label: '저녁 (18~22시)', shortLabel: '저녁', icon: '🌆' },
+            { id: 'night', label: '심야 (22~02시)', shortLabel: '심야', icon: '🌙' }
         ];
 
-        const STORAGE_KEY = 'cute_pad_study_planner_v1';
-
-        // 애플리케이션 상태
-        let state = {
-            selectedDate: getTodayStr(),
-            compareMode: 'yesterday', // 'yesterday' | 'allAvg' | 'typeAvg'
-            records: {} // { 'YYYY-MM-DD': { isSchoolDay: boolean, slots: { morning: number, ... } } }
-        };
-
-        // 스톱워치 상태
-        let timerInterval = null;
-        let timerSeconds = 0;
+        // 기본 위젯 구성 (기존 메인 카드 + 새롭게 추가된 시간대별 공부 비교 위젯)
+        const DEFAULT_WIDGETS = [
+            {
+                id: 'welcome_status',
+                title: '✨ 환영 & 인터페이스 설정 위젯',
+                desc: '기존 패드 안내 카드 및 독립 배치 제어 버튼',
+                visible: true
+            },
+            {
+                id: 'study_comparison',
+                title: '📊 시간대별 공부 시간 비교 위젯',
+                desc: '등교일/휴일 기준 및 전날·평균 대비 시간대별 분석',
+                visible: true
+            }
+        ];
 
         /**
-         * 날짜 유틸리티 함수들
+         * ==========================================
+         * 2. 애플리케이션 전역 상태
+         * ==========================================
+         */
+        let appState = {
+            widgets: [],
+            drawerOpen: false,
+            selectedDate: getTodayStr(),
+            compareMode: 'yesterday', // 'yesterday' | 'allAvg' | 'typeAvg'
+            records: {}, // { 'YYYY-MM-DD': { isSchoolDay: boolean, slots: { morning, afternoon, evening, night } } }
+            statusNote: '정상 작동 중'
+        };
+
+        /**
+         * ==========================================
+         * 3. 날짜 및 포맷 유틸리티
+         * ==========================================
          */
         function getTodayStr() {
-            const now = new Date();
-            return formatDateStr(now);
+            return formatDateStr(new Date());
         }
 
         function formatDateStr(dateObj) {
@@ -273,7 +228,7 @@
 
         function isWeekend(dateStr) {
             const day = parseDateStr(dateStr).getDay();
-            return day === 0 || day === 6; // 일요일(0) 또는 토요일(6)
+            return day === 0 || day === 6; // 토(6), 일(0) -> 자동 휴일(학교 안 간 날)
         }
 
         function getOffsetDateStr(dateStr, offsetDays) {
@@ -293,168 +248,261 @@
         }
 
         /**
-         * 초기 예시 데이터 생성 (최근 5일치 등교일/휴일 데이터 세팅)
+         * ==========================================
+         * 4. 초기 예시 공부 데이터 생성 (최근 7일)
+         * ==========================================
          */
-        function createDefaultSampleData() {
+        function generateSampleRecords() {
             const today = getTodayStr();
             const sample = {};
 
-            // 최근 5일간의 현실적인 공부 기록 생성
-            const offsets = [-4, -3, -2, -1, 0];
-            offsets.forEach((offset) => {
+            for (let offset = -6; offset <= 0; offset++) {
                 const dStr = getOffsetDateStr(today, offset);
                 const weekend = isWeekend(dStr);
-                const isSchool = !weekend; // 평일은 학교 간 날, 주말은 휴일(안 간 날)
+                const isSchool = !weekend; // 평일은 학교 간 날, 주말은 학교 안 간 날(휴일)
 
                 if (offset === 0) {
-                    // 오늘 데이터
+                    // 오늘 기록
                     sample[dStr] = {
                         isSchoolDay: isSchool,
                         slots: isSchool
-                            ? { morning: 40, afternoon: 60, evening: 130, night: 50 }
-                            : { morning: 120, afternoon: 150, evening: 90, night: 40 }
+                            ? { morning: 45, afternoon: 70, evening: 140, night: 55 }
+                            : { morning: 130, afternoon: 165, evening: 95, night: 45 }
                     };
                 } else if (isSchool) {
-                    // 평일(학교 간 날) 예시: 오후/저녁 위주 공부
+                    // 학교 간 날(등교일) 패턴: 하교 후 저녁/심야 중심
+                    const seed = Math.abs(offset);
                     sample[dStr] = {
                         isSchoolDay: true,
                         slots: {
-                            morning: 30 + ((Math.abs(offset) * 10) % 30),
-                            afternoon: 50 + ((Math.abs(offset) * 15) % 40),
-                            evening: 140 + ((Math.abs(offset) * 20) % 50),
-                            night: 60 + ((Math.abs(offset) * 10) % 30)
+                            morning: 30 + (seed % 3) * 10,
+                            afternoon: 50 + (seed % 4) * 15,
+                            evening: 120 + (seed % 3) * 20,
+                            night: 50 + (seed % 2) * 15
                         }
                     };
                 } else {
-                    // 휴일(학교 안 간 날) 예시: 오전/오후 집중 공부
+                    // 학교 안 간 날(휴일) 패턴: 오전/오후 집중 공부
+                    const seed = Math.abs(offset);
                     sample[dStr] = {
                         isSchoolDay: false,
                         slots: {
-                            morning: 140 + ((Math.abs(offset) * 15) % 40),
-                            afternoon: 180 + ((Math.abs(offset) * 20) % 50),
-                            evening: 100 + ((Math.abs(offset) * 10) % 40),
-                            night: 50
+                            morning: 120 + (seed % 3) * 20,
+                            afternoon: 150 + (seed % 3) * 25,
+                            evening: 90 + (seed % 2) * 20,
+                            night: 40 + (seed % 2) * 10
                         }
                     };
                 }
-            });
-
+            }
             return sample;
         }
 
         /**
-         * 로컬 스토리지 로드 및 저장
+         * ==========================================
+         * 5. 데이터 로드 및 저장 (localStorage)
+         * ==========================================
          */
-        function loadData() {
+        function loadAllData() {
             try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    state.records = JSON.parse(saved);
+                const savedWidgets = localStorage.getItem(WIDGET_STORAGE_KEY);
+                if (savedWidgets) {
+                    appState.widgets = JSON.parse(savedWidgets);
                 } else {
-                    state.records = createDefaultSampleData();
-                    saveData();
+                    appState.widgets = JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+                    saveWidgets();
                 }
-            } catch (e) {
-                console.error('데이터 로드 오류:', e);
-                state.records = createDefaultSampleData();
+
+                const savedRecords = localStorage.getItem(STUDY_STORAGE_KEY);
+                if (savedRecords) {
+                    appState.records = JSON.parse(savedRecords);
+                } else {
+                    appState.records = generateSampleRecords();
+                    saveRecords();
+                }
+            } catch (err) {
+                console.error('스토리지 로드 실패:', err);
+                appState.widgets = JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+                appState.records = generateSampleRecords();
             }
         }
 
-        function saveData() {
+        function saveWidgets() {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
-            } catch (e) {
-                console.error('데이터 저장 오류:', e);
+                localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(appState.widgets));
+            } catch (err) {
+                console.error('위젯 저장 실패:', err);
             }
         }
 
-        /**
-         * 특정 날짜의 레코드 가져오기 (없으면 주말 여부에 맞춰 자동 초기화)
-         */
+        function saveRecords() {
+            try {
+                localStorage.setItem(STUDY_STORAGE_KEY, JSON.stringify(appState.records));
+            } catch (err) {
+                console.error('공부 기록 저장 실패:', err);
+            }
+        }
+
         function getOrCreateRecord(dateStr) {
-            if (!state.records[dateStr]) {
-                state.records[dateStr] = {
+            if (!appState.records[dateStr]) {
+                appState.records[dateStr] = {
                     isSchoolDay: !isWeekend(dateStr),
                     slots: { morning: 0, afternoon: 0, evening: 0, night: 0 }
                 };
-                saveData();
+                saveRecords();
             }
-            return state.records[dateStr];
+            return appState.records[dateStr];
         }
 
         /**
-         * 안내 메시지 표시 (alert 대체)
+         * ==========================================
+         * 6. UI 인터랙션 및 위젯 관리 핸들러
+         * ==========================================
          */
-        function showToast(msg) {
-            const el = document.getElementById('statusMessage');
-            el.textContent = msg;
-            el.classList.add('text-[#0284c7]', 'font-bold');
+        function showToast(message) {
+            const toastEl = document.getElementById('toastMessage');
+            toastEl.textContent = message;
+            toastEl.classList.remove('text-[#718096]');
+            toastEl.classList.add('text-[#3182ce]');
             setTimeout(() => {
-                el.classList.remove('text-[#0284c7]', 'font-bold');
-            }, 2500);
+                toastEl.classList.remove('text-[#3182ce]');
+                toastEl.classList.add('text-[#718096]');
+            }, 2600);
         }
 
-        /**
-         * 폰트 변경
-         */
-        function changeFont(fontVal) {
-            document.documentElement.style.setProperty('--current-font', fontVal);
-            showToast('✨ 글꼴이 변경되었습니다.');
+        function changeFont(fontFamily) {
+            document.documentElement.style.setProperty('--current-font', fontFamily);
+            showToast('✨ 선택하신 글꼴이 전체 위젯에 적용되었습니다.');
         }
 
-        /**
-         * 날짜 변경
-         */
-        function changeDate(offset) {
-            state.selectedDate = getOffsetDateStr(state.selectedDate, offset);
+        function toggleWidgetDrawer() {
+            appState.drawerOpen = !appState.drawerOpen;
+            const drawer = document.getElementById('widgetDrawer');
+            const btn = document.getElementById('widgetDrawerToggleBtn');
+
+            if (appState.drawerOpen) {
+                drawer.classList.remove('hidden');
+                btn.classList.add('bg-[#ebf8ff]', 'border-[#90cdf4]', 'text-[#2b6cb0]');
+            } else {
+                drawer.classList.add('hidden');
+                btn.classList.remove('bg-[#ebf8ff]', 'border-[#90cdf4]', 'text-[#2b6cb0]');
+            }
+            renderWidgetControls();
+        }
+
+        function switchBottomTab(tab) {
+            ['home', 'widgets', 'info'].forEach(t => {
+                const el = document.getElementById(`nav-${t}`);
+                if (t === tab) {
+                    el.className = 'flat-btn px-4 py-2 rounded-xl text-sm font-bold bg-[#ebf8ff] text-[#3182ce]';
+                } else {
+                    el.className = 'flat-btn px-4 py-2 rounded-xl text-sm font-bold text-[#a0aec0] hover:bg-[#f7fafc]';
+                }
+            });
+
+            if (tab === 'widgets') {
+                if (!appState.drawerOpen) toggleWidgetDrawer();
+                showToast('🧩 위젯 관리 서랍이 열렸습니다.');
+            } else if (tab === 'home') {
+                if (appState.drawerOpen) toggleWidgetDrawer();
+                showToast('🏠 홈 대시보드 화면입니다.');
+            } else if (tab === 'info') {
+                showToast('💡 상단 [위젯 관리]에서 위젯 표시 여부와 순서를 바꿀 수 있어요!');
+            }
+        }
+
+        function toggleWidgetVisibility(widgetId) {
+            const target = appState.widgets.find(w => w.id === widgetId);
+            if (target) {
+                target.visible = !target.visible;
+                saveWidgets();
+                renderAll();
+                showToast(`${target.visible ? '✅ 위젯이 표시됩니다:' : '🙈 위젯이 숨겨졌습니다:'} ${target.title}`);
+            }
+        }
+
+        function moveWidgetOrder(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= appState.widgets.length) return;
+            const temp = appState.widgets[index];
+            appState.widgets[index] = appState.widgets[newIndex];
+            appState.widgets[newIndex] = temp;
+            saveWidgets();
+            renderAll();
+            showToast('↕️ 위젯 배치 순서가 변경되었습니다.');
+        }
+
+        function resetWidgetLayout() {
+            appState.widgets = JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+            saveWidgets();
+            renderAll();
+            showToast('🔄 위젯 배치가 기본값으로 초기화되었습니다.');
+        }
+
+        // 기존 환영 위젯 내 버튼 핸들러
+        function triggerOriginalAction(actionType) {
+            if (actionType === 'check') {
+                appState.statusNote = '폰트 및 레이아웃 정상 확인 완료';
+                renderAll();
+                showToast('✅ 설정 확인: 모든 요소가 겹침 없이 정상 배치되었습니다!');
+            } else if (actionType === 'adjust') {
+                appState.statusNote = '패드 화면 최적화 모드 적용됨';
+                renderAll();
+                showToast('🎨 인터페이스 조정: 패드 화면 크기에 최적화되었습니다!');
+            }
+        }
+
+        // 공부 비교 위젯 핸들러
+        function changeStudyDate(offset) {
+            appState.selectedDate = getOffsetDateStr(appState.selectedDate, offset);
             renderAll();
         }
 
-        /**
-         * 등교 여부(학교 간 날 / 안 간 날) 수동 토글
-         */
         function toggleSchoolDay() {
-            const rec = getOrCreateRecord(state.selectedDate);
+            const rec = getOrCreateRecord(appState.selectedDate);
             rec.isSchoolDay = !rec.isSchoolDay;
-            saveData();
+            saveRecords();
             renderAll();
-            const label = rec.isSchoolDay ? '🏫 학교 간 날(등교일)' : '🏡 학교 안 간 날(휴일)';
-            showToast(`${state.selectedDate} 날짜가 '${label}'로 설정되었습니다.`);
+            const label = rec.isSchoolDay ? '🏫 학교 간 날 (등교일)' : '🏡 학교 안 간 날 (휴일)';
+            showToast(`${appState.selectedDate} 날짜가 '${label}'로 설정되었습니다.`);
         }
 
-        /**
-         * 비교 기준 변경 ('yesterday' | 'allAvg' | 'typeAvg')
-         */
         function setCompareMode(mode) {
-            state.compareMode = mode;
+            appState.compareMode = mode;
             renderAll();
         }
 
-        /**
-         * 시간대별 공부 시간(분) 증감
-         */
-        function adjustSlotMinutes(slotId, deltaMins) {
-            const rec = getOrCreateRecord(state.selectedDate);
-            const current = rec.slots[slotId] || 0;
-            const nextVal = Math.max(0, Math.min(360, current + deltaMins));
-            rec.slots[slotId] = nextVal;
-            saveData();
+        function adjustStudyMinutes(slotId, delta) {
+            const rec = getOrCreateRecord(appState.selectedDate);
+            const cur = rec.slots[slotId] || 0;
+            rec.slots[slotId] = Math.max(0, Math.min(360, cur + delta));
+            saveRecords();
             renderAll();
         }
 
+        function restoreSampleStudyData() {
+            appState.records = generateSampleRecords();
+            appState.selectedDate = getTodayStr();
+            saveRecords();
+            renderAll();
+            showToast('🔄 최근 7일간의 등교일/휴일 예시 공부 기록이 복원되었습니다!');
+        }
+
         /**
-         * 비교 기준 데이터 계산 로직
+         * ==========================================
+         * 7. 비교 기준 데이터 계산 알고리즘
+         * ==========================================
          */
-        function calculateComparisonBaseline() {
-            const currentRec = getOrCreateRecord(state.selectedDate);
+        function computeComparisonBaseline() {
+            const currentRec = getOrCreateRecord(appState.selectedDate);
             const baselineSlots = { morning: 0, afternoon: 0, evening: 0, night: 0 };
             let subtitle = '';
             let legendLabel = '';
 
-            if (state.compareMode === 'yesterday') {
-                const prevDate = getOffsetDateStr(state.selectedDate, -1);
-                const prevRec = state.records[prevDate];
-                subtitle = `전날(${prevDate}, ${getDayOfWeekKor(prevDate)}) 기록과 비교하고 있어요`;
+            if (appState.compareMode === 'yesterday') {
+                const prevDate = getOffsetDateStr(appState.selectedDate, -1);
+                const prevRec = appState.records[prevDate];
+                subtitle = `전날(${prevDate}, ${getDayOfWeekKor(prevDate)}) 공부 시간과 시간대별로 비교해요`;
                 legendLabel = `전날 (${prevDate.slice(5)})`;
 
                 if (prevRec) {
@@ -462,17 +510,16 @@
                         baselineSlots[s.id] = prevRec.slots[s.id] || 0;
                     });
                 }
-            } else if (state.compareMode === 'allAvg') {
-                // 선택일을 제외한 모든 기록된 날짜의 평균 (기록이 선택일뿐이면 선택일 포함)
-                const allDates = Object.keys(state.records);
-                const otherDates = allDates.filter(d => d !== state.selectedDate);
+            } else if (appState.compareMode === 'allAvg') {
+                const allDates = Object.keys(appState.records);
+                const otherDates = allDates.filter(d => d !== appState.selectedDate);
                 const targetDates = otherDates.length > 0 ? otherDates : allDates;
 
-                subtitle = `저장된 전체 ${targetDates.length}일 평균 공부 시간과 비교하고 있어요`;
+                subtitle = `기록된 전체 ${targetDates.length}일 평균 공부 시간과 비교해요`;
                 legendLabel = `전체 평균 (${targetDates.length}일)`;
 
                 targetDates.forEach(d => {
-                    const r = state.records[d];
+                    const r = appState.records[d];
                     TIME_SLOTS.forEach(s => {
                         baselineSlots[s.id] += (r.slots[s.id] || 0);
                     });
@@ -483,19 +530,19 @@
                         baselineSlots[s.id] = Math.round(baselineSlots[s.id] / targetDates.length);
                     });
                 }
-            } else if (state.compareMode === 'typeAvg') {
-                // 동일한 등교 여부(학교 간 날 vs 안 간 날) 평균 계산
-                const targetType = currentRec.isSchoolDay;
-                const typeName = targetType ? '학교 간 날(등교일)' : '학교 안 간 날(휴일)';
-                const allDates = Object.keys(state.records).filter(d => state.records[d].isSchoolDay === targetType);
-                const otherSameType = allDates.filter(d => d !== state.selectedDate);
-                const targetDates = otherSameType.length > 0 ? otherSameType : allDates;
+            } else if (appState.compareMode === 'typeAvg') {
+                // 학교 간 날 vs 안 간 날(휴일) 기준 평균
+                const isSchool = currentRec.isSchoolDay;
+                const typeTitle = isSchool ? '학교 간 날(등교일)' : '학교 안 간 날(휴일)';
+                const sameTypeDates = Object.keys(appState.records).filter(d => appState.records[d].isSchoolDay === isSchool);
+                const otherSameType = sameTypeDates.filter(d => d !== appState.selectedDate);
+                const targetDates = otherSameType.length > 0 ? otherSameType : sameTypeDates;
 
-                subtitle = `다른 '${typeName}' ${targetDates.length}일 평균과 비교하고 있어요`;
-                legendLabel = `${targetType ? '등교일' : '휴일'} 평균`;
+                subtitle = `다른 '${typeTitle}' ${targetDates.length}일 평균과 시간대별로 비교해요`;
+                legendLabel = `${isSchool ? '등교일' : '휴일'} 평균`;
 
                 targetDates.forEach(d => {
-                    const r = state.records[d];
+                    const r = appState.records[d];
                     TIME_SLOTS.forEach(s => {
                         baselineSlots[s.id] += (r.slots[s.id] || 0);
                     });
@@ -512,135 +559,160 @@
         }
 
         /**
-         * 전체 UI 렌더링
+         * ==========================================
+         * 8. 위젯 렌더링 함수들
+         * ==========================================
          */
-        function renderAll() {
-            const currentRec = getOrCreateRecord(state.selectedDate);
-            const todayStr = getTodayStr();
+        function renderWidgetControls() {
+            const listEl = document.getElementById('widgetControlList');
+            if (!listEl) return;
 
-            // 1. 헤더 날짜 표시
-            const formattedDate = state.selectedDate.replace(/-/g, '.');
-            const dow = getDayOfWeekKor(state.selectedDate);
-            document.getElementById('displayDate').textContent = `${formattedDate} (${dow})`;
+            listEl.innerHTML = appState.widgets.map((w, idx) => `
+                <div class="bg-white border-2 ${w.visible ? 'border-[#90cdf4]' : 'border-[#e2e8f0]'} rounded-2xl p-3 flex items-center justify-between gap-3">
+                    <!-- 좌측 위젯 이름/설명 영역 (겹침 방지 min-w-0) -->
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-bold text-[#2d3748] truncate">${w.title}</div>
+                        <div class="text-xs text-[#718096] truncate">${w.desc}</div>
+                    </div>
 
-            const badgeEl = document.getElementById('dateBadge');
-            if (state.selectedDate === todayStr) {
-                badgeEl.textContent = '오늘';
-                badgeEl.className = 'text-xs font-bold text-[#0284c7]';
-            } else if (state.selectedDate === getOffsetDateStr(todayStr, -1)) {
-                badgeEl.textContent = '어제';
-                badgeEl.className = 'text-xs font-bold text-[#64748b]';
-            } else {
-                badgeEl.textContent = isWeekend(state.selectedDate) ? '주말' : '평일';
-                badgeEl.className = 'text-xs text-[#94a3b8]';
-            }
-
-            // 2. 등교 여부 토글 버튼 스타일 업데이트
-            const schoolBtn = document.getElementById('schoolToggleBtn');
-            const schoolIcon = document.getElementById('schoolIcon');
-            const schoolText = document.getElementById('schoolStatusText');
-
-            if (currentRec.isSchoolDay) {
-                schoolBtn.className = 'pastel-btn flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-[#93c5fd] bg-[#eff6ff] text-[#1d4ed8] font-bold text-sm';
-                schoolIcon.textContent = '🏫';
-                schoolText.textContent = '학교 간 날 (등교)';
-            } else {
-                schoolBtn.className = 'pastel-btn flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-[#fca5a5] bg-[#fef2f2] text-[#b91c1c] font-bold text-sm';
-                schoolIcon.textContent = '🏡';
-                schoolText.textContent = '학교 안 간 날 (휴일)';
-            }
-
-            // 3. 총 공부 시간 계산
-            let totalMins = 0;
-            TIME_SLOTS.forEach(s => {
-                totalMins += (currentRec.slots[s.id] || 0);
-            });
-            document.getElementById('totalStudyTimeText').textContent = formatMinutes(totalMins);
-
-            // 4. 비교 탭 버튼 활성화 상태 업데이트
-            ['yesterday', 'allAvg', 'typeAvg'].forEach(mode => {
-                const tabBtn = document.getElementById(`tab-${mode}`);
-                if (state.compareMode === mode) {
-                    tabBtn.className = 'pastel-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-[#fb923c] text-white';
-                } else {
-                    tabBtn.className = 'pastel-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-transparent text-[#9a3412] hover:bg-[#ffedd5]';
-                }
-            });
-
-            // 5. 비교 차트 렌더링
-            renderComparisonChart(currentRec);
-
-            // 6. 시간대별 입력 카드 렌더링
-            renderInputSlots(currentRec);
+                    <!-- 우측 독립 조작 버튼 영역 (순서 이동 + 표시 토글) -->
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="moveWidgetOrder(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="flat-btn px-2 py-1.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] text-xs font-bold disabled:opacity-40" title="위로 이동">
+                            ▲
+                        </button>
+                        <button onclick="moveWidgetOrder(${idx}, 1)" ${idx === appState.widgets.length - 1 ? 'disabled' : ''} class="flat-btn px-2 py-1.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] text-xs font-bold disabled:opacity-40" title="아래로 이동">
+                            ▼
+                        </button>
+                        <button onclick="toggleWidgetVisibility('${w.id}')" class="flat-btn px-3 py-1.5 rounded-xl text-xs font-bold ${w.visible ? 'bg-[#68d391] text-white' : 'bg-[#edf2f7] text-[#4a5568]'}">
+                            ${w.visible ? '표시중' : '숨김'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        /**
-         * 시간대별 가로 듀얼 막대 차트 렌더링
-         */
-        function renderComparisonChart(currentRec) {
-            const { baselineSlots, subtitle, legendLabel } = calculateComparisonBaseline();
-            document.getElementById('compareSubtitle').textContent = subtitle;
-            document.getElementById('legendCompareLabel').textContent = legendLabel;
+        // [위젯 1] 기존의 환영 카드 & 독립 배치 제어 영역 HTML 생성
+        function buildWelcomeStatusWidgetHTML(widgetIndex) {
+            return `
+                <section class="bg-white border-2 border-[#e2e8f0] rounded-3xl p-5 space-y-4">
+                    <!-- 위젯 상단 미니 헤더 (위젯 제목 + 숨기기 버튼 독립 배치) -->
+                    <div class="flex items-center justify-between gap-2 pb-2 border-b-2 border-dashed border-[#edf2f7]">
+                        <span class="text-xs font-bold text-[#a0aec0]">WIDGET #${widgetIndex + 1} · 기본 대시보드</span>
+                        <button onclick="toggleWidgetVisibility('welcome_status')" class="flat-btn px-2.5 py-1 rounded-xl bg-[#f7fafc] hover:bg-[#edf2f7] text-xs font-bold text-[#718096]">
+                            위젯 숨기기 ✕
+                        </button>
+                    </div>
 
-            const container = document.getElementById('comparisonChartContainer');
-            container.innerHTML = '';
+                    <!-- 기존 환영 카드 (명암 없이 깔끔한 파스텔 테두리) -->
+                    <div class="bg-[#fffaf0] border-2 border-[#feebc8] rounded-2xl p-4 space-y-1.5">
+                        <div class="text-lg font-bold text-[#d69e2e]">✨ 환영합니다!</div>
+                        <div class="text-sm text-[#718096] leading-relaxed">
+                            명암을 없애고 패드 화면에 딱 맞게 구성된 깔끔한 위젯 대시보드입니다. 모든 텍스트와 버튼이 겹치지 않도록 독립 배치되었으며, 아래 위젯에서 시간대별 공부 기록을 비교할 수 있어요!
+                        </div>
+                    </div>
 
-            // 차트 스케일 계산 (최대 240분 기준, 더 큰 값이 있으면 확장)
-            let maxVal = 180;
-            TIME_SLOTS.forEach(s => {
-                maxVal = Math.max(maxVal, currentRec.slots[s.id] || 0, baselineSlots[s.id] || 0);
-            });
+                    <!-- 기존 텍스트와 드래그/액션 버튼 겹침 해결 독립 배치 행 1 -->
+                    <div class="bg-[#f7fafc] border-2 border-[#e2e8f0] rounded-2xl p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+                        <div class="flex-1 min-w-0 text-sm text-[#2d3748] leading-snug">
+                            <strong>설정 확인:</strong> 현재 폰트와 레이아웃이 정상적으로 적용되어 있습니다. <span class="text-xs text-[#3182ce] font-bold">(${appState.statusNote})</span>
+                        </div>
+                        <button onclick="triggerOriginalAction('check')" class="flat-btn shrink-0 bg-[#68d391] hover:bg-[#48bb78] text-white px-4 py-2.5 rounded-xl text-sm font-bold">
+                            선택하기
+                        </button>
+                    </div>
 
+                    <!-- 기존 텍스트와 드래그/액션 버튼 겹침 해결 독립 배치 행 2 -->
+                    <div class="bg-[#f7fafc] border-2 border-[#e2e8f0] rounded-2xl p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+                        <div class="flex-1 min-w-0 text-sm text-[#2d3748] leading-snug">
+                            <strong>인터페이스 조정:</strong> 패드 화면 크기에 맞추어 모든 위젯 요소가 한눈에 들어옵니다.
+                        </div>
+                        <button onclick="triggerOriginalAction('adjust')" class="flat-btn shrink-0 bg-[#63b3ed] hover:bg-[#4299e1] text-white px-4 py-2.5 rounded-xl text-sm font-bold">
+                            변경하기
+                        </button>
+                    </div>
+                </section>
+            `;
+        }
+
+        // [위젯 2] 시간대별 공부 시간 비교 & 등교일/휴일 기준 분석 위젯 HTML 생성
+        function buildStudyComparisonWidgetHTML(widgetIndex) {
+            const currentRec = getOrCreateRecord(appState.selectedDate);
+            const todayStr = getTodayStr();
+            const formattedDate = appState.selectedDate.replace(/-/g, '.');
+            const dow = getDayOfWeekKor(appState.selectedDate);
+
+            let dateTag = isWeekend(appState.selectedDate) ? '주말' : '평일';
+            if (appState.selectedDate === todayStr) dateTag = '오늘';
+            else if (appState.selectedDate === getOffsetDateStr(todayStr, -1)) dateTag = '어제';
+
+            const { baselineSlots, subtitle, legendLabel } = computeComparisonBaseline();
+
+            // 차트 최대 눈금 계산
+            let maxScale = 180;
             let totalCurrent = 0;
             let totalBaseline = 0;
+            TIME_SLOTS.forEach(s => {
+                const c = currentRec.slots[s.id] || 0;
+                const b = baselineSlots[s.id] || 0;
+                totalCurrent += c;
+                totalBaseline += b;
+                maxScale = Math.max(maxScale, c, b);
+            });
 
-            TIME_SLOTS.forEach(slot => {
+            // 총합 차이 배지
+            const totalDiff = totalCurrent - totalBaseline;
+            let totalDiffText = '기준과 동일해요';
+            let totalDiffStyle = 'bg-white border-[#fed7aa] text-[#c2410c]';
+            if (totalDiff > 0) {
+                totalDiffText = `총 +${formatMinutes(totalDiff)} 더 공부함 🎉`;
+                totalDiffStyle = 'bg-[#dcfce7] border-[#86efac] text-[#15803d]';
+            } else if (totalDiff < 0) {
+                totalDiffText = `총 ${formatMinutes(Math.abs(totalDiff))} 덜 공부함`;
+                totalDiffStyle = 'bg-[#fee2e2] border-[#fca5a5] text-[#b91c1c]';
+            }
+
+            // 시간대별 듀얼 가로 막대 차트 행 생성
+            const chartRowsHTML = TIME_SLOTS.map(slot => {
                 const curMin = currentRec.slots[slot.id] || 0;
                 const baseMin = baselineSlots[slot.id] || 0;
-                totalCurrent += curMin;
-                totalBaseline += baseMin;
-
                 const diff = curMin - baseMin;
-                const curPct = Math.min(100, Math.round((curMin / maxVal) * 100));
-                const basePct = Math.min(100, Math.round((baseMin / maxVal) * 100));
 
-                // 증감 배지 텍스트 및 색상
-                let diffText = '0분';
-                let diffClass = 'bg-[#f1f5f9] text-[#64748b] border-[#cbd5e1]';
+                const curPct = Math.min(100, Math.round((curMin / maxScale) * 100));
+                const basePct = Math.min(100, Math.round((baseMin / maxScale) * 100));
+
+                let diffBadge = '0분';
+                let diffBadgeClass = 'bg-[#f1f5f9] text-[#64748b] border-[#cbd5e1]';
                 if (diff > 0) {
-                    diffText = `+${diff}분 ▲`;
-                    diffClass = 'bg-[#dcfce7] text-[#15803d] border-[#86efac]';
+                    diffBadge = `+${diff}분 ▲`;
+                    diffBadgeClass = 'bg-[#dcfce7] text-[#15803d] border-[#86efac]';
                 } else if (diff < 0) {
-                    diffText = `${diff}분 ▼`;
-                    diffClass = 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]';
+                    diffBadge = `${diff}분 ▼`;
+                    diffBadgeClass = 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]';
                 }
 
-                const rowHtml = `
+                return `
                     <div class="bg-white border-2 border-[#ffedd5] rounded-2xl p-3.5 space-y-2">
-                        <!-- 상단: 시간대 이름과 증감 배지 (겹침 방지 독립 배치) -->
+                        <!-- 시간대 이름 + 증감 배지 (겹침 방지 독립 배치) -->
                         <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5">
                                 <span class="text-base">${slot.icon}</span>
                                 <span class="font-bold text-sm text-[#334155]">${slot.label}</span>
                             </div>
-                            <span class="px-2.5 py-0.5 rounded-xl border text-xs font-bold ${diffClass}">
-                                ${diffText}
+                            <span class="px-2.5 py-0.5 rounded-xl border text-xs font-bold ${diffBadgeClass}">
+                                ${diffBadge}
                             </span>
                         </div>
 
-                        <!-- 듀얼 막대 영역 -->
+                        <!-- 듀얼 가로 막대 -->
                         <div class="space-y-1.5">
-                            <!-- 선택일 막대 -->
                             <div class="flex items-center gap-3">
-                                <div class="flex-1 h-4 bg-[#fff7ed] rounded-full overflow-hidden border border-[#ffedd5]">
+                                <div class="flex-1 h-3.5 bg-[#fff7ed] rounded-full overflow-hidden border border-[#ffedd5]">
                                     <div class="bar-fill h-full bg-[#fb923c] rounded-full" style="width: ${curPct}%"></div>
                                 </div>
                                 <span class="w-16 text-right text-xs font-bold text-[#ea580c] shrink-0">${formatMinutes(curMin)}</span>
                             </div>
-
-                            <!-- 비교 기준 막대 -->
                             <div class="flex items-center gap-3">
-                                <div class="flex-1 h-3.5 bg-[#f8fafc] rounded-full overflow-hidden border border-[#e2e8f0]">
+                                <div class="flex-1 h-3 bg-[#f8fafc] rounded-full overflow-hidden border border-[#e2e8f0]">
                                     <div class="bar-fill h-full bg-[#cbd5e1] rounded-full" style="width: ${basePct}%"></div>
                                 </div>
                                 <span class="w-16 text-right text-xs font-bold text-[#64748b] shrink-0">${formatMinutes(baseMin)}</span>
@@ -648,147 +720,161 @@
                         </div>
                     </div>
                 `;
-                container.insertAdjacentHTML('beforeend', rowHtml);
-            });
+            }).join('');
 
-            // 총합 차이 배지 업데이트
-            const totalDiff = totalCurrent - totalBaseline;
-            const totalBadge = document.getElementById('totalDiffBadge');
-            if (totalDiff > 0) {
-                totalBadge.textContent = `총 +${formatMinutes(totalDiff)} 더 공부함! 🎉`;
-                totalBadge.className = 'px-3 py-1 rounded-xl bg-[#dcfce7] border border-[#86efac] font-bold text-[#15803d] text-xs';
-            } else if (totalDiff < 0) {
-                totalBadge.textContent = `총 ${formatMinutes(Math.abs(totalDiff))} 덜 공부함`;
-                totalBadge.className = 'px-3 py-1 rounded-xl bg-[#fee2e2] border border-[#fca5a5] font-bold text-[#b91c1c] text-xs';
-            } else {
-                totalBadge.textContent = '기준 시간과 동일해요';
-                totalBadge.className = 'px-3 py-1 rounded-xl bg-white border border-[#fed7aa] font-bold text-[#c2410c] text-xs';
-            }
-        }
-
-        /**
-         * 시간대별 공부 시간 입력 카드 렌더링 (텍스트와 버튼이 절대 겹치지 않게 설계)
-         */
-        function renderInputSlots(currentRec) {
-            const container = document.getElementById('timeSlotsInputContainer');
-            container.innerHTML = '';
-
-            TIME_SLOTS.forEach(slot => {
+            // 시간대별 공부 시간 직접 입력/수정 버튼 카드 생성
+            const inputCardsHTML = TIME_SLOTS.map(slot => {
                 const mins = currentRec.slots[slot.id] || 0;
-                const cardHtml = `
-                    <div class="bg-white border-2 border-[#bbf7d0] rounded-2xl p-3.5 flex items-center justify-between gap-3">
-                        <!-- 좌측 텍스트 정보 영역 -->
+                return `
+                    <div class="bg-white border-2 border-[#bbf7d0] rounded-2xl p-3 flex items-center justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-1.5">
-                                <span>${slot.icon}</span>
-                                <span class="font-bold text-sm text-[#1e293b] truncate">${slot.label}</span>
-                            </div>
-                            <div class="text-base font-bold text-[#15803d] mt-1">
-                                ${formatMinutes(mins)}
-                            </div>
+                            <div class="text-xs font-bold text-[#475569] truncate">${slot.icon} ${slot.shortLabel}</div>
+                            <div class="text-sm font-bold text-[#15803d] mt-0.5">${formatMinutes(mins)}</div>
                         </div>
-
-                        <!-- 우측 독립 조작 버튼 그룹 -->
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <button onclick="adjustSlotMinutes('${slot.id}', -10)" class="pastel-btn px-2.5 py-2 rounded-xl bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5] text-xs font-bold hover:bg-[#fecaca]">
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="adjustStudyMinutes('${slot.id}', -10)" class="flat-btn px-2 py-1.5 rounded-xl bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5] text-xs font-bold hover:bg-[#fecaca]">
                                 -10분
                             </button>
-                            <button onclick="adjustSlotMinutes('${slot.id}', 10)" class="pastel-btn px-2.5 py-2 rounded-xl bg-[#dcfce7] text-[#15803d] border border-[#86efac] text-xs font-bold hover:bg-[#bbf7d0]">
+                            <button onclick="adjustStudyMinutes('${slot.id}', 10)" class="flat-btn px-2 py-1.5 rounded-xl bg-[#dcfce7] text-[#15803d] border border-[#86efac] text-xs font-bold hover:bg-[#bbf7d0]">
                                 +10분
                             </button>
-                            <button onclick="adjustSlotMinutes('${slot.id}', 30)" class="pastel-btn px-2.5 py-2 rounded-xl bg-[#bbf7d0] text-[#14532d] border border-[#4ade80] text-xs font-bold hover:bg-[#86efac]">
+                            <button onclick="adjustStudyMinutes('${slot.id}', 30)" class="flat-btn px-2 py-1.5 rounded-xl bg-[#bbf7d0] text-[#14532d] border border-[#4ade80] text-xs font-bold hover:bg-[#86efac]">
                                 +30분
                             </button>
                         </div>
                     </div>
                 `;
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            });
+            }).join('');
+
+            return `
+                <section class="bg-[#fffaf0] border-2 border-[#fed7aa] rounded-3xl p-5 space-y-4">
+                    <!-- 위젯 상단 미니 헤더 -->
+                    <div class="flex items-center justify-between gap-2 pb-2 border-b-2 border-dashed border-[#ffedd5]">
+                        <span class="text-xs font-bold text-[#dd6b20]">WIDGET #${widgetIndex + 1} · 시간대별 공부 비교</span>
+                        <button onclick="toggleWidgetVisibility('study_comparison')" class="flat-btn px-2.5 py-1 rounded-xl bg-white hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c]">
+                            위젯 숨기기 ✕
+                        </button>
+                    </div>
+
+                    <!-- 위젯 컨트롤 바: 날짜 이동 + 등교 여부(학교 간 날 / 안 간 날) 토글 -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 bg-white border-2 border-[#fed7aa] rounded-2xl p-3">
+                        <!-- 날짜 이동 -->
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeStudyDate(-1)" class="flat-btn px-2.5 py-1.5 rounded-xl bg-[#fff7ed] hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c]">◀</button>
+                            <div class="text-center min-w-[115px]">
+                                <div class="text-sm font-bold text-[#334155]">${formattedDate} (${dow})</div>
+                                <div class="text-xs text-[#ea580c] font-bold">${dateTag} · 총 ${formatMinutes(totalCurrent)}</div>
+                            </div>
+                            <button onclick="changeStudyDate(1)" class="flat-btn px-2.5 py-1.5 rounded-xl bg-[#fff7ed] hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c]">▶</button>
+                        </div>
+
+                        <!-- 학교 간 날 / 안 간 날 (휴일 판단 기준) 토글 버튼 -->
+                        <button onclick="toggleSchoolDay()" class="flat-btn flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border-2 text-xs font-bold ${
+                            currentRec.isSchoolDay
+                                ? 'border-[#93c5fd] bg-[#eff6ff] text-[#1d4ed8]'
+                                : 'border-[#fca5a5] bg-[#fef2f2] text-[#b91c1c]'
+                        }">
+                            <span>${currentRec.isSchoolDay ? '🏫' : '🏡'}</span>
+                            <span>${currentRec.isSchoolDay ? '학교 간 날 (등교)' : '학교 안 간 날 (휴일)'}</span>
+                        </button>
+                    </div>
+
+                    <!-- 비교 기준 선택 탭 (전날 대비 / 전체 평균 / 등교·휴일 평균) -->
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs text-[#9a3412] font-bold">${subtitle}</p>
+                        <div class="flex flex-wrap gap-1 bg-white p-1 rounded-2xl border-2 border-[#fed7aa]">
+                            <button onclick="setCompareMode('yesterday')" class="flat-btn px-3 py-1.5 rounded-xl text-xs font-bold ${
+                                appState.compareMode === 'yesterday' ? 'bg-[#fb923c] text-white' : 'text-[#9a3412] hover:bg-[#ffedd5]'
+                            }">
+                                전날 대비
+                            </button>
+                            <button onclick="setCompareMode('allAvg')" class="flat-btn px-3 py-1.5 rounded-xl text-xs font-bold ${
+                                appState.compareMode === 'allAvg' ? 'bg-[#fb923c] text-white' : 'text-[#9a3412] hover:bg-[#ffedd5]'
+                            }">
+                                전체 평균
+                            </button>
+                            <button onclick="setCompareMode('typeAvg')" class="flat-btn px-3 py-1.5 rounded-xl text-xs font-bold ${
+                                appState.compareMode === 'typeAvg' ? 'bg-[#fb923c] text-white' : 'text-[#9a3412] hover:bg-[#ffedd5]'
+                            }">
+                                등교/휴일 평균
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 범례 & 총합 차이 배지 -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs px-1">
+                        <div class="flex items-center gap-4">
+                            <span class="flex items-center gap-1.5 font-bold text-[#ea580c]">
+                                <span class="w-3 h-3 rounded-full bg-[#fb923c] inline-block"></span> 선택일 기록
+                            </span>
+                            <span class="flex items-center gap-1.5 font-bold text-[#64748b]">
+                                <span class="w-3 h-3 rounded-full bg-[#cbd5e1] inline-block"></span> ${legendLabel}
+                            </span>
+                        </div>
+                        <span class="px-3 py-1 rounded-xl border font-bold ${totalDiffStyle}">
+                            ${totalDiffText}
+                        </span>
+                    </div>
+
+                    <!-- 듀얼 막대 차트 목록 -->
+                    <div class="space-y-2.5">
+                        ${chartRowsHTML}
+                    </div>
+
+                    <!-- 시간대별 공부 시간 간편 입력 영역 -->
+                    <div class="bg-[#f0fdf4] border-2 border-[#bbf7d0] rounded-2xl p-4 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-sm font-bold text-[#15803d]">✏️ 시간대별 공부 기록 추가/수정</span>
+                            <button onclick="restoreSampleStudyData()" class="flat-btn px-2.5 py-1 rounded-xl bg-white border border-[#bbf7d0] text-xs font-bold text-[#15803d] hover:bg-[#dcfce7]">
+                                7일 예시 데이터 복원
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${inputCardsHTML}
+                        </div>
+                    </div>
+                </section>
+            `;
         }
 
         /**
-         * 실시간 스톱워치 기능 (현재 시각에 해당하는 시간대 자동 판별)
+         * ==========================================
+         * 9. 전체 대시보드 렌더링 루프
+         * ==========================================
          */
-        function getCurrentTimeSlotId() {
-            const hour = new Date().getHours();
-            if (hour >= 6 && hour < 12) return 'morning';
-            if (hour >= 12 && hour < 18) return 'afternoon';
-            if (hour >= 18 && hour < 22) return 'evening';
-            return 'night';
-        }
+        function renderAll() {
+            renderWidgetControls();
 
-        function updateTimerSlotLabel() {
-            const slotId = getCurrentTimeSlotId();
-            const slot = TIME_SLOTS.find(s => s.id === slotId);
-            document.getElementById('timerSlotLabel').textContent = `${slot.label} 측정`;
-        }
+            const canvas = document.getElementById('widgetCanvas');
+            const visibleWidgets = appState.widgets.filter(w => w.visible);
 
-        function toggleTimer() {
-            const btn = document.getElementById('timerToggleBtn');
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-                btn.textContent = '계속';
-                btn.className = 'pastel-btn px-3 py-2 rounded-xl bg-[#38bdf8] text-white text-sm font-bold hover:bg-[#0284c7]';
-            } else {
-                timerInterval = setInterval(() => {
-                    timerSeconds++;
-                    updateStopwatchDisplay();
-                }, 1000);
-                btn.textContent = '일시정지';
-                btn.className = 'pastel-btn px-3 py-2 rounded-xl bg-[#fb923c] text-white text-sm font-bold hover:bg-[#ea580c]';
-            }
-        }
-
-        function updateStopwatchDisplay() {
-            const h = String(Math.floor(timerSeconds / 3600)).padStart(2, '0');
-            const m = String(Math.floor((timerSeconds % 3600) / 60)).padStart(2, '0');
-            const s = String(timerSeconds % 60).padStart(2, '0');
-            document.getElementById('stopwatchDisplay').textContent = `${h}:${m}:${s}`;
-        }
-
-        function saveTimerToSlot() {
-            const addedMins = Math.max(1, Math.round(timerSeconds / 60));
-            if (timerSeconds === 0) {
-                showToast('⏱️ 먼저 타이머를 시작해 주세요!');
+            if (visibleWidgets.length === 0) {
+                canvas.innerHTML = `
+                    <div class="bg-[#f8fafc] border-2 border-dashed border-[#cbd5e1] rounded-3xl p-10 text-center space-y-3">
+                        <div class="text-3xl">🧩</div>
+                        <div class="text-base font-bold text-[#475569]">표시 중인 위젯이 없습니다!</div>
+                        <p class="text-xs text-[#64748b]">상단의 [위젯 관리] 버튼을 눌러 원하는 위젯을 다시 켜보세요.</p>
+                        <button onclick="resetWidgetLayout()" class="flat-btn px-4 py-2 rounded-2xl bg-[#63b3ed] text-white text-sm font-bold">
+                            모든 위젯 다시 표시하기
+                        </button>
+                    </div>
+                `;
                 return;
             }
-            const slotId = getCurrentTimeSlotId();
-            const slot = TIME_SLOTS.find(s => s.id === slotId);
 
-            // 오늘 날짜의 해당 시간대에 반영
-            state.selectedDate = getTodayStr();
-            adjustSlotMinutes(slotId, addedMins);
-
-            // 타이머 초기화
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            timerSeconds = 0;
-            updateStopwatchDisplay();
-            const btn = document.getElementById('timerToggleBtn');
-            btn.textContent = '시작';
-            btn.className = 'pastel-btn px-3 py-2 rounded-xl bg-[#38bdf8] text-white text-sm font-bold hover:bg-[#0284c7]';
-
-            showToast(`🎉 ${slot.label}에 ${addedMins}분이 반영되었습니다!`);
-        }
-
-        /**
-         * 예시 데이터 복원
-         */
-        function resetSampleData() {
-            state.records = createDefaultSampleData();
-            state.selectedDate = getTodayStr();
-            saveData();
-            renderAll();
-            showToast('🔄 최근 5일간의 예시 데이터가 복원되었습니다!');
+            canvas.innerHTML = visibleWidgets.map((w, index) => {
+                if (w.id === 'welcome_status') {
+                    return buildWelcomeStatusWidgetHTML(index);
+                } else if (w.id === 'study_comparison') {
+                    return buildStudyComparisonWidgetHTML(index);
+                }
+                return '';
+            }).join('');
         }
 
         // 초기 실행
         window.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            updateTimerSlotLabel();
+            loadAllData();
             renderAll();
         });
     </script>
