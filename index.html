@@ -1202,7 +1202,16 @@
       <div class="week-chart" id="weeklyBarChart"></div>
     </section>
 
-    <!-- 위젯 6: 오늘의 회고 & 만족도 별점 -->
+    <!-- 위젯 6: 시간대별 공부량 비교 -->
+    <section class="widget-card span-12" data-widget-id="hourlyCompare" id="hourlyStudyCompare">
+      <div class="widget-edit-bar">
+        <span>⠿ 드래그하여 이동 | 🕒 시간대별 공부량 비교</span>
+        <div><button class="btn btn-danger btn-sm" onclick="hideWidget('hourlyCompare')">숨김</button></div>
+      </div>
+      <div id="hourlyStudyCompareContent"></div>
+    </section>
+
+    <!-- 위젯 7: 오늘의 회고 & 만족도 별점 -->
     <section class="widget-card span-6" data-widget-id="reflection">
       <div class="widget-edit-bar">
         <span>⠿ 드래그하여 이동 | 📝 오늘의 회고 & 별점</span>
@@ -1606,6 +1615,7 @@ const DEFAULT_WIDGETS = [
   { id: "timetable", name: "📅 3파트 계획 vs 실제 타임테이블", visible: true, span: 6, rows: 6 },
   { id: "heatmap", name: "🟩 월간 공부 농도 히트맵 달력", visible: true, span: 6, rows: 5 },
   { id: "weekly", name: "📈 주간 누적 학습 그래프", visible: true, span: 6, rows: 5 },
+  { id: "hourlyCompare", name: "🕒 시간대별 공부량 비교", visible: true, span: 12, rows: 4 },
   { id: "reflection", name: "📝 오늘의 1일 기록 & 회고", visible: true, span: 6, rows: 5 }
 ];
 
@@ -1914,6 +1924,10 @@ function toggleDashboardEditMode() {
 
 function applyWidgetLayout() {
   const grid = document.getElementById("widgetGrid");
+  if (!Array.isArray(userData.widgets)) userData.widgets = JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+  DEFAULT_WIDGETS.forEach(def => {
+    if (!userData.widgets.some(w => w.id === def.id)) userData.widgets.push({ ...def });
+  });
   userData.widgets.forEach(w => {
     const card = grid.querySelector(`[data-widget-id="${w.id}"]`);
     if (!card) return;
@@ -2983,16 +2997,8 @@ function hourlyStudyMinutes(rec) {
   return bins;
 }
 function renderHourlyStudyComparison() {
-  let box = document.getElementById('hourlyStudyCompare');
-  if (!box) {
-    const weekly = document.querySelector('[data-widget-id="weekly"]');
-    if (!weekly) return;
-    box = document.createElement('section');
-    box.className = 'widget-card span-12';
-    box.id = 'hourlyStudyCompare';
-    box.dataset.widgetId = 'hourlyCompare';
-    weekly.insertAdjacentElement('afterend', box);
-  }
+  const box = document.getElementById('hourlyStudyCompareContent');
+  if (!box) return;
   const selected = getDayData(selectedDate);
   const attendance = dayAttendance(selected);
   const mode = document.getElementById('hourlyCompareMode')?.value || 'yesterday';
